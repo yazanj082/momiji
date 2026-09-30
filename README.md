@@ -44,7 +44,15 @@ python3 scripts/psn-account-id.py
 
 ## Support
 
-Momiji is free and has no ads. Ways to support its development are coming soon.
+Momiji is free and has no ads. If you enjoy it, you can support its development with a crypto donation. Thank you!
+
+| Coin | Network | Address | QR code |
+| --- | --- | --- | --- |
+| USDT | TRON (TRC20) | `TE8aCakZvwLApQ6G1NtDsSQ7zLF77TRiih` | <img src="docs/support/usdt-trc20.svg" width="120" alt="QR code of the TRON address"> |
+| USDT | BNB Smart Chain (BEP20) | `0x6d27c717294a2693d752f5440a27CDfC9c966CFb` | <img src="docs/support/usdt-bep20.svg" width="120" alt="QR code of the BNB Smart Chain address"> |
+| Bitcoin | Bitcoin | `bc1q972yfl3l32wsunarcs0c72vm9qx0eyx53s48zd` | <img src="docs/support/bitcoin.svg" width="120" alt="QR code of the Bitcoin address"> |
+
+Send each coin only on the network next to it, as coins sent on another network can be lost.
 
 ## Credits
 

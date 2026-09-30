@@ -164,7 +164,7 @@
     <string name="display_hosts_empty_vpn_info">A VPN is on, which can hide consoles on your home network. Turn it off, or allow local network (LAN) connections in the VPN app.</string>
     <string name="support_info">Momiji is free and open source. If you enjoy it, you can support its development.</string>
     <string name="action_support">Support Momiji</string>
-    <string name="support_url" translatable="false"></string>
+    <string name="support_url" translatable="false">https://github.com/yazanj082/momiji#support</string>
     <string name="source_url" translatable="false">https://github.com/yazanj082/momiji</string>
     <string name="preferences_category_title_about">About</string>
     <string name="preferences_about_version">Version %s · Free and open source under the AGPL-3.0 license</string>
