@@ -17,6 +17,7 @@ import com.metallic.chiaki.common.ext.RevealActivity
 import com.metallic.chiaki.common.ext.viewModelFactory
 import com.metallic.chiaki.common.getDatabase
 import com.metallic.chiaki.databinding.ActivityEditManualBinding
+import com.metallic.chiaki.common.ext.fitSystemBars
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.addTo
@@ -42,6 +43,7 @@ class EditManualConsoleActivity: AppCompatActivity(), RevealActivity
 		super.onCreate(savedInstanceState)
 		binding = ActivityEditManualBinding.inflate(layoutInflater)
 		setContentView(binding.root)
+		binding.root.fitSystemBars(keyboard = true)
 		handleReveal()
 
 		viewModel = ViewModelProvider(this, viewModelFactory {

@@ -17,6 +17,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.metallic.chiaki.R
 import com.metallic.chiaki.databinding.ActivityPsnSignInBinding
+import com.metallic.chiaki.common.ext.fitSystemBars
 import kotlin.concurrent.thread
 
 /**
@@ -38,6 +39,7 @@ class PsnSignInActivity: AppCompatActivity()
 		super.onCreate(savedInstanceState)
 		binding = ActivityPsnSignInBinding.inflate(layoutInflater)
 		setContentView(binding.root)
+		binding.root.fitSystemBars(keyboard = true)
 		binding.toolbar.setNavigationOnClickListener { finish() }
 
 		clearSession()

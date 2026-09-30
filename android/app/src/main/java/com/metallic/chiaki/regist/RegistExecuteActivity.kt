@@ -21,6 +21,7 @@ import com.metallic.chiaki.common.getDatabase
 import com.metallic.chiaki.databinding.ActivityRegistExecuteBinding
 import com.metallic.chiaki.lib.RegistInfo
 import com.metallic.chiaki.main.MainActivity
+import com.metallic.chiaki.common.ext.fitSystemBars
 import kotlin.math.max
 
 class RegistExecuteActivity: AppCompatActivity()
@@ -41,6 +42,7 @@ class RegistExecuteActivity: AppCompatActivity()
 		super.onCreate(savedInstanceState)
 		binding = ActivityRegistExecuteBinding.inflate(layoutInflater)
 		setContentView(binding.root)
+		binding.root.fitSystemBars()
 
 		viewModel = ViewModelProvider(this, viewModelFactory { RegistExecuteViewModel(getDatabase(this)) })
 			.get(RegistExecuteViewModel::class.java)

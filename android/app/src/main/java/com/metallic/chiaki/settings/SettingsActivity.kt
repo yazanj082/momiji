@@ -10,6 +10,7 @@ import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import com.metallic.chiaki.R
 import com.metallic.chiaki.databinding.ActivitySettingsBinding
+import com.metallic.chiaki.common.ext.fitSystemBars
 
 interface TitleFragment
 {
@@ -25,6 +26,7 @@ class SettingsActivity: AppCompatActivity(), PreferenceFragmentCompat.OnPreferen
 		super.onCreate(savedInstanceState)
 		binding = ActivitySettingsBinding.inflate(layoutInflater)
 		setContentView(binding.root)
+		binding.root.fitSystemBars()
 		title = ""
 		setSupportActionBar(binding.toolbar)
 		binding.toolbar.setNavigationOnClickListener { onBackPressedDispatcher.onBackPressed() }

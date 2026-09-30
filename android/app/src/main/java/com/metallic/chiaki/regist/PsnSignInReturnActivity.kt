@@ -9,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.metallic.chiaki.R
 import com.metallic.chiaki.databinding.ActivityPsnSignInReturnBinding
+import com.metallic.chiaki.common.ext.fitSystemBars
 import kotlin.concurrent.thread
 
 /**
@@ -27,7 +28,9 @@ class PsnSignInReturnActivity: AppCompatActivity()
 			finish()
 			return
 		}
-		setContentView(ActivityPsnSignInReturnBinding.inflate(layoutInflater).root)
+		val binding = ActivityPsnSignInReturnBinding.inflate(layoutInflater)
+		setContentView(binding.root)
+		binding.root.fitSystemBars()
 		thread {
 			val result = runCatching { PsnAccountId.fetch(code) }
 			runOnUiThread {

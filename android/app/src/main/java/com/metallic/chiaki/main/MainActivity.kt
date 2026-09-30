@@ -40,6 +40,7 @@ import com.metallic.chiaki.manualconsole.EditManualConsoleActivity
 import com.metallic.chiaki.regist.RegistActivity
 import com.metallic.chiaki.settings.SettingsActivity
 import com.metallic.chiaki.stream.StreamActivity
+import com.metallic.chiaki.common.ext.fitSystemBars
 
 class MainActivity : AppCompatActivity()
 {
@@ -67,6 +68,7 @@ class MainActivity : AppCompatActivity()
 		super.onCreate(savedInstanceState)
 		binding = ActivityMainBinding.inflate(layoutInflater)
 		setContentView(binding.root)
+		binding.root.fitSystemBars()
 		connectHostMac = intent.getLongExtra(EXTRA_CONNECT_HOST_MAC, -1).takeIf { it >= 0 }
 
 		title = ""

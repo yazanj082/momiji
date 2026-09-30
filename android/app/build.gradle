@@ -19,12 +19,12 @@ println("Determined Chiaki Version: $chiakiVersion")
 
 android {
     namespace 'com.metallic.chiaki'
-    compileSdk 34
+    compileSdk 36
     ndkVersion '26.1.10909125'
     defaultConfig {
         applicationId "io.github.yazanj082.momiji"
         minSdk 24
-        targetSdk 34
+        targetSdk 36
         versionCode 12
         versionName "1.0.0"
         externalNativeBuild {
@@ -43,8 +43,20 @@ android {
                         "-DCHIAKI_ENABLE_RUDP=ON",
                         "-DCHIAKI_ENABLE_SPEEX=OFF",
                         "-DCHIAKI_ENABLE_STEAM_SHORTCUT=OFF",
-                        "-DCHIAKI_ENABLE_STEAMDECK_NATIVE=OFF"
+                        "-DCHIAKI_ENABLE_STEAMDECK_NATIVE=OFF",
+                        // 16 KB memory pages, which Google Play requires for Android 15+ devices
+                        "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384"
             }
+        }
+    }
+    // The same app for F-Droid (APK) and Google Play (App Bundle)
+    flavorDimensions = ["store"]
+    productFlavors {
+        fdroid {
+            dimension "store"
+        }
+        play {
+            dimension "store"
         }
     }
     buildFeatures {

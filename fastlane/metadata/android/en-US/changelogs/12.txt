@@ -1,0 +1,1 @@
+The first release of Momiji: a new design, registration by signing in with Sony, DualSense haptics over USB, and many fixes for controllers, TV boxes and Samsung DeX.

@@ -1,0 +1,25 @@
+Momiji streams games from your PS5 or PS4 to your Android phone, tablet, TV box or Samsung DeX, over your home network. It's free and open source, with no ads or tracking.
+
+<b>Easy to set up</b>
+• Finds the consoles on your network and wakes them up from rest mode.
+• Registration in three explained steps. Sign in with Sony in your browser, and Momiji fills in your Account ID for you. Passkeys work too.
+
+<b>Play with a real controller</b>
+• DualSense, DualShock 4, Xbox and other controllers, with rumble.
+• DualSense touch haptics on the controller's own actuators over USB, plus its gyro and touchpad.
+• On-screen controls for touch, hidden while a controller is connected.
+
+<b>Great picture, low latency</b>
+• Up to 1080p at 60 fps, with H.264 or HEVC and up to 100 Mbps.
+• An optional filter against color banding in dark scenes.
+• Hardware decoding in low latency mode.
+
+<b>For the living room</b>
+• Works with a TV remote or controller on Android TV boxes, and can start right into Momiji.
+• In Samsung DeX, the stream fills the TV, with its sound on the TV.
+
+Before you start, turn on Remote Play on your console: Settings → System → Remote Play on a PS5, or Settings → Remote Play Connection Settings on a PS4.
+
+Momiji is based on Chiaki and chiaki-ng, and is licensed under the AGPL-3.0. Its source code is at github.com/yazanj082/momiji.
+
+Momiji is an unofficial app and is not endorsed or certified by Sony Interactive Entertainment. PlayStation, PS4, PS5, DualShock and DualSense are trademarks of Sony Interactive Entertainment LLC.

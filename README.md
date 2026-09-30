@@ -40,7 +40,11 @@ python3 scripts/psn-account-id.py
    git clone --recursive https://github.com/yazanj082/momiji.git
    ```
 2. Open the `android` directory in Android Studio, with the Android NDK and CMake installed.
-3. Build with Gradle.
+3. Build with Gradle, in the `android` directory:
+   - F-Droid version (APK): `./gradlew assembleFdroidRelease`
+   - Google Play version (App Bundle): `./gradlew bundlePlayRelease`
+
+Both run on Android 7.0 and newer.
 
 ## Support
 
