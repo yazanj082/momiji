@@ -66,6 +66,10 @@ Momiji is built on the work of these projects and all their contributors:
 - [chiaki-ng](https://github.com/streetpea/chiaki-ng) by Street Pea
 - [chiaki-ng-android-extended](https://github.com/SalamiTheMan/chiaki-ng-android-extended) by SalamiTheMan
 
+## Privacy
+
+Momiji doesn't collect any personal data. See the [privacy policy](PRIVACY.md).
+
 ## License
 
 Momiji is licensed under the GNU Affero General Public License v3.0, with an exception for OpenSSL. See [COPYING](COPYING) and [LICENSES](LICENSES).
