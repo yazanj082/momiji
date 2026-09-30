@@ -20,7 +20,7 @@
                 android:src="@drawable/ic_add_manual"
                 android:layout_marginLeft="16dp"
                 android:layout_marginRight="16dp"
-                android:tint="?attr/colorOnPrimary"
+                android:tint="?attr/colorPrimary"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintLeft_toLeftOf="parent"
                 app:layout_constraintRight_toRightOf="parent"

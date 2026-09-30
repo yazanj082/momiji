@@ -1,71 +1,63 @@
-# Chiaki for Android (NG)
+# Momiji
 
-> [!WARNING]
-> This fork has been **completely vibecoded** with the assistance of AI. Use at your own risk. I am absolutely not an expert in video processing stuff.
+Momiji streams games from your PS5 or PS4 to Android phones, tablets, TV boxes and Samsung DeX. It's free and open source, with no ads or tracking.
 
-Chiaki is a free and open-source PlayStation Remote Play client for Android. This is a specialized fork focused on providing the best possible experience on Android devices, with enhanced features and performance.
+## Features
 
-My main issue with all of the android remote play apps is that they do not support any debanding filters, which is a dealbreaker for me. Only time when gradients are smooth is when HDR is enabled but this is not a good solution for most of android devices due to reduced brightness and some other weird behaviors. So I thought why not spend some time on implementing debanding filters myself and learn more about AI Agent-driven development.
-Basically debanding is already implemented in chiaki-ng for Steam Deck and Windows through libplacebo, but libplacebo is really really not easy to implement for Android, so I decided to try another lightweight approach which is based on GLES Custom Shader. So I spent few evenings to debug and optimize the shader code and finally I got it working! It means now you can play your favorite PS games with smooth gradients and great brightness on your android device!
+- **Finds your consoles** on your network and wakes them up from rest mode.
+- **Easy registration**: sign in with Sony in your browser, and Momiji fills in your Account ID. Passkeys work too.
+- **Controllers**: DualSense, DualShock 4, Xbox and other gamepads, with rumble. On-screen controls are hidden while a controller is connected.
+- **DualSense**: touch haptics on the controller's own actuators over USB, gyro and touchpad, plus adaptive triggers and the lightbar where Android gives access to the controller.
+- **Picture**: up to 1080p at 60 fps, H.264 or HEVC, up to 100 Mbps, with an optional debanding filter for smooth gradients.
+- **Low latency**: hardware decoding in low latency mode and the phone's low latency Wi-Fi mode.
+- **TV boxes**: works with a TV remote or controller, and can start right into Momiji. Press **L1 + R1 + Options + Create** together to open the stream menu with just a controller.
+- **Samsung DeX**: the stream fills the whole screen, and its sound plays on the TV even with a DualSense plugged in by USB.
 
-## Key Features
+## Getting started
 
-- **PS4 & PS5 Support**: Connect to your PlayStation 4 or PlayStation 5 from anywhere.
-- **Enhanced Video Quality**:
-  - **Dynamic Bitrate**: Manually set your bitrate up to **100,000 kbps** for ultra-clear streaming.
-  - **Post-processing Filters**: Integrated specialized **Debanding** to reduce color artifacts.
-- **Advanced Controls**:
-  - **Touchpad Emulation**: Use your touchscreen as a DualShock 4 / DualSense touchpad.
-  - **Interactive Button Remapping**: Easily remap any button on your physical controller by pressing the button you want to assign.
-  - **Motion Sensors**: Use your Android device's gyroscope and accelerometer for motion-controlled games.
-  - **Haptic Feedback**: Support for rumble and touch haptics.
-- **DualSense Features (PS5)**: PS5 haptics are played as rumble, and the controller's own gyroscope and touchpad are used (Android 12+). Adaptive triggers and the lightbar work where the app can access the controller's HID device (see the Orange Pi image below). When the DualSense is connected by USB, its real touch haptics (not just rumble) are played on the controller's own actuators, and the stream's TV/speaker audio keeps playing on the device's normal output instead of being redirected to the controller. A "Controller headphones" setting lets you opt back into routing sound to a headset plugged into the controller.
-- **TV Boxes**: Controller-friendly UI with Android TV launcher support, 1080p and no touch controls by default on devices without a touchscreen, and TV game mode (ALLM) while streaming. Press **L1 + R1 + Options + Create** together to open the stream menu and quit with just a controller. Selecting a console in rest mode wakes it up and connects as soon as it's ready. Optionally make Chiaki the home screen.
-- **Samsung DeX**: The stream fills the whole TV or monitor, without the DeX window bar, and uses the phone's low latency Wi-Fi mode. On-screen controls are hidden while a controller is connected (they can still be turned on from the stream overlay).
-- **Performance Optimized**: Low-latency streaming optimized for Android NDK, with MediaCodec's low latency mode (e.g. ~5 ms to decode a 1080p60 frame on an RK3588).
+1. On your console, turn on Remote Play: **Settings → System → Remote Play → Enable Remote Play** on a PS5, or **Settings → Remote Play Connection Settings** on a PS4. To wake the console from rest mode, also turn on **Stay Connected to the Internet** and **Enable Turning On PS5 from Network** in its power saving settings.
+2. Install Momiji from the [releases](https://github.com/yazanj082/momiji/releases).
+3. Open Momiji, tap your console and follow the three registration steps.
 
-## Orange Pi 5 Pro Image
+If your console isn't found, check that your phone is on the same network, and that no VPN is on.
 
-[`scripts/orangepi5pro`](scripts/orangepi5pro) builds an SD card image that turns an Orange Pi 5 Pro (RK3588S) into a PS5 Remote Play box, from Orange Pi's Android 12 TV image, with this app preinstalled.
+### Finding your Account ID without signing in
 
-## Getting Started
-
-### Prerequisites
-
-- A PlayStation 4 or PlayStation 5 console connected to your network.
-- Your PSN Account ID (you can find it using the provided script).
-
-### Installation
-
-1. Download the latest APK from the [Releases](https://github.com/SalamiTheMan/chiaki-ng-android-extended/releases) page.
-2. Install the APK on your Android device.
-3. Open Chiaki and follow the instructions to register your console.
-
-### Obtaining your PSN Account ID
-
-To register your console, you need your 8-byte PSN Account ID (Base64). You can use the helper script provided in this repository:
+[`scripts/psn-account-id.py`](scripts/psn-account-id.py) finds your Account ID from a computer:
 
 ```bash
 python3 scripts/psn-account-id.py
 ```
 
-## Build Instructions (Developers)
+## Orange Pi 5 Pro image
 
-To build the project yourself:
+[`scripts/orangepi5pro`](scripts/orangepi5pro) builds an SD card image that turns an Orange Pi 5 Pro into a PS5 Remote Play box, from Orange Pi's Android 12 TV image, with Momiji preinstalled.
 
-1. Clone the repository with submodules:
+## Building
+
+1. Clone the repository with its submodules:
    ```bash
-   git clone --recursive https://github.com/SalamiTheMan/chiaki-ng-android-extended.git
+   git clone --recursive https://github.com/yazanj082/momiji.git
    ```
-2. Open the `android/` directory in Android Studio.
-3. Ensure you have the Android NDK and CMake installed.
-4. Build the project using Gradle.
+2. Open the `android` directory in Android Studio, with the Android NDK and CMake installed.
+3. Build with Gradle.
 
-## Upcoming Features (TBD)
+## Support
 
-- **AMD FidelityFX FSR 1.0**: High-quality upscaling and sharpening (logic integrated into the renderer, UI toggle coming soon).
-- **Customizable Overlays**: More layouts for on-screen controls.
+Momiji is free. If you enjoy it, you can support its development from the app's settings.
+
+## Credits
+
+Momiji is built on the work of these projects and all their contributors:
+
+- [Chiaki](https://git.sr.ht/~thestr4ng3r/chiaki) by Florian Märkl
+- [chiaki-ng](https://github.com/streetpea/chiaki-ng) by Street Pea
+- [chiaki-ng-android-extended](https://github.com/SalamiTheMan/chiaki-ng-android-extended) by SalamiTheMan
+
+## License
+
+Momiji is licensed under the GNU Affero General Public License v3.0, with an exception for OpenSSL. See [COPYING](COPYING) and [LICENSES](LICENSES).
 
 ## Disclaimer
 
-This project is not endorsed or certified by Sony Interactive Entertainment LLC. PlayStation, DualShock, and DualSense are trademarks of Sony Interactive Entertainment LLC.
+Momiji is not endorsed or certified by Sony Interactive Entertainment LLC. PlayStation, PS4, PS5, DualShock and DualSense are trademarks of Sony Interactive Entertainment LLC.

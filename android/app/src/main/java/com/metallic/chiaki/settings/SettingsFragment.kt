@@ -7,6 +7,7 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.res.Resources
 import android.os.Bundle
+import android.net.Uri
 import android.provider.Settings
 import android.text.InputType
 import androidx.lifecycle.Observer
@@ -14,6 +15,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.preference.*
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.metallic.chiaki.R
+import com.metallic.chiaki.BuildConfig
 import com.metallic.chiaki.common.Preferences
 import com.metallic.chiaki.common.exportAndShareAllSettings
 import com.metallic.chiaki.common.ext.viewModelFactory
@@ -164,6 +166,13 @@ class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 		preferenceScreen.findPreference<Preference>(getString(R.string.preferences_export_settings_key))?.setOnPreferenceClickListener { exportSettings(); true }
 		preferenceScreen.findPreference<Preference>(getString(R.string.preferences_import_settings_key))?.setOnPreferenceClickListener { importSettings(); true }
 		preferenceScreen.findPreference<Preference>("test_controller_rumble")?.setOnPreferenceClickListener { testControllerRumble(); true }
+
+		preferenceScreen.findPreference<Preference>("about_version")?.summary = getString(R.string.preferences_about_version, BuildConfig.VERSION_NAME)
+		val supportUrl = getString(R.string.support_url)
+		preferenceScreen.findPreference<Preference>("about_support")?.let {
+			it.isVisible = supportUrl.isNotEmpty()
+			it.intent = Intent(Intent.ACTION_VIEW, Uri.parse(supportUrl))
+		}
 	}
 
 	override fun onDestroy()

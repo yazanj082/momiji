@@ -61,7 +61,7 @@ SYS_LABEL=u:object_r:system_file:s0
 echo "== system: DualSense/DualShock 4 input configs, ADB key"
 cmds=$MOD/system.cmds; : > "$cmds"
 # The DualSense touchpad is a mouse pointer by default. As a touch navigation device its
-# fingers reach the app as absolute touches, which Chiaki forwards to the console's
+# fingers reach the app as absolute touches, which Momiji forwards to the console's
 # touchpad. The motion sensors are described like Android does for the DualShock 4.
 for pid in 0ce6 0df2 05c4 09cc; do
 	cat > "$MOD/Vendor_054c_Product_$pid.idc" <<-'EOF'
@@ -97,14 +97,14 @@ EOF
 put_file "$cmds" "$MOD/ueventd.rc" /etc/ueventd.rc 644 u:object_r:vendor_configs_file:s0
 debugfs_batch "$MOD/vendor.img" "$cmds"
 
-echo "== product: Chiaki as a system app"
+echo "== product: Momiji as a system app"
 e2fsck -fy "$MOD/product.img" >/dev/null || [ $? -le 1 ]
 blocks=$(dumpe2fs -h "$MOD/product.img" 2>/dev/null | awk '/^Block count/ {print $3}')
 apk_blocks=$(( ($(stat -c %s "$APK") + 4095) / 4096 ))
 resize2fs "$MOD/product.img" $(( blocks + apk_blocks * 3 + 4096 )) >/dev/null 2>&1
 cmds=$MOD/product.cmds; : > "$cmds"
-put_dir "$cmds" /app/Chiaki $SYS_LABEL
-put_file "$cmds" "$APK" /app/Chiaki/Chiaki.apk 644 $SYS_LABEL
+put_dir "$cmds" /app/Momiji $SYS_LABEL
+put_file "$cmds" "$APK" /app/Momiji/Momiji.apk 644 $SYS_LABEL
 put_dir "$cmds" /etc/security $SYS_LABEL
 put_file "$cmds" "$MOD/adb_keys" /etc/security/adb_keys 644 $SYS_LABEL
 debugfs_batch "$MOD/product.img" "$cmds"

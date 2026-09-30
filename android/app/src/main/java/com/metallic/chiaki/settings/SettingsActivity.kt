@@ -27,6 +27,7 @@ class SettingsActivity: AppCompatActivity(), PreferenceFragmentCompat.OnPreferen
 		setContentView(binding.root)
 		title = ""
 		setSupportActionBar(binding.toolbar)
+		binding.toolbar.setNavigationOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
 		val rootFragment = SettingsFragment()
 		replaceFragment(rootFragment, false)

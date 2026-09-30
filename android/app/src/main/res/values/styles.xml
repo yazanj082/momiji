@@ -1,115 +1,163 @@
 <resources>
-    <style name="AppTheme" parent="Theme.MaterialComponents.NoActionBar">
-        <item name="colorPrimary">@color/primary</item>
-        <item name="colorPrimaryDark">@color/primary_dark</item>
-        <item name="colorAccent">@color/accent</item>
-        <item name="colorOnPrimary">#ffffff</item>
-        <item name="colorSecondary">@color/accent</item>
-        <item name="colorOnSecondary">#000000</item>
-        <item name="android:statusBarColor">?attr/colorPrimarySurface</item>
-        <item name="android:navigationBarColor">?attr/colorPrimarySurface</item>
-        <item name="materialAlertDialogTheme">@style/AppTheme.AlertDialog</item>
-        <item name="alertDialogTheme">@style/AppTheme.AlertDialog.NonMaterial</item>
-
+    <style name="AppTheme" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/md_primary</item>
+        <item name="colorOnPrimary">@color/md_on_primary</item>
+        <item name="colorPrimaryContainer">@color/md_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/md_on_primary_container</item>
+        <item name="colorPrimaryInverse">@color/md_inverse_primary</item>
+        <item name="colorSecondary">@color/md_secondary</item>
+        <item name="colorOnSecondary">@color/md_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/md_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/md_on_secondary_container</item>
+        <item name="colorTertiary">@color/md_tertiary</item>
+        <item name="colorOnTertiary">@color/md_on_tertiary</item>
+        <item name="colorTertiaryContainer">@color/md_tertiary_container</item>
+        <item name="colorOnTertiaryContainer">@color/md_on_tertiary_container</item>
+        <item name="colorError">@color/md_error</item>
+        <item name="colorOnError">@color/md_on_error</item>
+        <item name="colorErrorContainer">@color/md_error_container</item>
+        <item name="colorOnErrorContainer">@color/md_on_error_container</item>
+        <item name="android:colorBackground">@color/md_background</item>
+        <item name="colorOnBackground">@color/md_on_surface</item>
+        <item name="colorSurface">@color/md_surface</item>
+        <item name="colorOnSurface">@color/md_on_surface</item>
+        <item name="colorSurfaceVariant">@color/md_surface_variant</item>
+        <item name="colorOnSurfaceVariant">@color/md_on_surface_variant</item>
+        <item name="colorSurfaceContainerLowest">@color/md_surface_container_lowest</item>
+        <item name="colorSurfaceContainerLow">@color/md_surface_container_low</item>
+        <item name="colorSurfaceContainer">@color/md_surface_container</item>
+        <item name="colorSurfaceContainerHigh">@color/md_surface_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/md_surface_container_highest</item>
+        <item name="colorSurfaceInverse">@color/md_inverse_surface</item>
+        <item name="colorOnSurfaceInverse">@color/md_inverse_on_surface</item>
+        <item name="colorOutline">@color/md_outline</item>
+        <item name="colorOutlineVariant">@color/md_outline_variant</item>
+        <item name="colorAccent">@color/md_primary</item>
+        <item name="colorPrimaryDark">@color/md_surface_container_low</item>
+        <item name="android:statusBarColor">@color/md_background</item>
+        <item name="android:navigationBarColor">@color/md_background</item>
         <item name="android:windowActivityTransitions">true</item>
     </style>
 
-    <style name="AppTheme.Toolbar" parent="AppTheme">
-        <item name="android:textColorSecondary">#fff</item>
-    </style>
+    <style name="AppTheme.Toolbar" parent="ThemeOverlay.Material3.Dark.ActionBar" />
 
-    <style name="AppTheme.FloatingActionButtonSpeedDial">
-        <item name="tint">@color/floating_action_button_speed_dial_tint</item>
-        <item name="android:backgroundTint">@color/floating_action_button_speed_dial_background</item>
-        <item name="android:textColor">@color/floating_action_button_speed_dial_tint</item>
-    </style>
-
-    <style name="AppTheme.AlertDialog" parent="Theme.MaterialComponents.Dialog.Alert">
-        <item name="android:textColorPrimary">@android:color/primary_text_dark</item>
-        <item name="materialButtonStyle">@style/AppTheme.AlertDialog.Button</item>
-    </style>
-
-    <style name="AppTheme.AlertDialog.NonMaterial" parent="Theme.AppCompat.Dialog.Alert">
-        <item name="android:textColorPrimary">@android:color/primary_text_dark</item>
-        <item name="materialButtonStyle">@style/AppTheme.AlertDialog.Button</item>
-        <item name="colorControlActivated">@color/accent</item>
-    </style>
-
-    <style name="AppTheme.AlertDialog.Button" parent="Widget.MaterialComponents.Button.TextButton.Dialog">
-        <item name="android:textColor">@color/accent</item>
-    </style>
-
-    <style name="MageTheme" parent="Theme.MaterialComponents.NoActionBar">
-        <item name="colorPrimary">@color/primary</item>
-        <item name="colorPrimaryDark">@color/primary_dark</item>
-        <item name="colorAccent">@color/accent</item>
-        <item name="colorOnPrimary">#ffffff</item>
-        <item name="colorSecondary">@color/accent</item>
-        <item name="colorOnSecondary">#000000</item>
-        <item name="colorPrimarySurface">@color/primary</item>
-        <item name="android:windowBackground">@color/primary</item>
-        <item name="android:statusBarColor">?attr/colorPrimarySurface</item>
-        <item name="android:navigationBarColor">?attr/colorPrimarySurface</item>
-        <item name="colorControlNormal">@color/accent</item>
-        <item name="colorButtonNormal">@color/accent</item>
-        <item name="android:textAppearanceButton">@style/MageTheme.TextAppearanceButton</item>
-        <item name="android:textColor">?attr/colorOnPrimary</item>
-
-        <item name="textAppearanceHeadline1">@style/MageTheme.TextAppearanceHeadline1</item>
-
-        <item name="android:colorControlActivated">?attr/colorAccent</item>
-        <item name="android:colorControlHighlight">?attr/colorAccent</item>
-
+    <!-- Registration and manual console screens -->
+    <style name="MageTheme" parent="AppTheme">
         <item name="textInputStyle">@style/MageTheme.TextInputStyle</item>
-
-        <item name="android:windowActivityTransitions">true</item>
-        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
-
-        -<item name="materialAlertDialogTheme">@style/AppTheme.AlertDialog</item>
+        <item name="textAppearanceHeadline1">@style/MageTheme.TextAppearanceHeadline1</item>
     </style>
 
     <style name="MageTheme.Translucent" parent="MageTheme">
         <item name="android:windowIsTranslucent">true</item>
     </style>
 
-    <style name="MageTheme.TextAppearanceHeadline1" parent="TextAppearance.MaterialComponents.Headline1">
-        <item name="fontFamily">sans-serif-condensed-light</item>
+    <style name="MageTheme.TextAppearanceHeadline1" parent="TextAppearance.Material3.DisplaySmall">
+        <item name="android:textColor">?attr/colorOnSurface</item>
     </style>
 
-    <style name="MageTheme.TextInputStyle" parent="Widget.MaterialComponents.TextInputLayout.FilledBox">
-        <item name="hintTextColor">?attr/colorAccent</item>
-        <item name="boxCornerRadiusTopStart">16dp</item>
-        <item name="boxCornerRadiusTopEnd">16dp</item>
-        <item name="boxStrokeColor">@color/mage_text_input_box_stroke</item>
-        <item name="boxBackgroundColor">?attr/colorPrimaryDark</item>
-    </style>
+    <style name="MageTheme.TextInputStyle" parent="Widget.Material3.TextInputLayout.OutlinedBox" />
 
-    <style name="MageTheme.TextInputStyle.ExposedDropdownMenu" parent="Widget.MaterialComponents.TextInputLayout.FilledBox.ExposedDropdownMenu">
-        <item name="hintTextColor">?attr/colorAccent</item>
-        <item name="boxCornerRadiusTopStart">16dp</item>
-        <item name="boxCornerRadiusTopEnd">16dp</item>
-        <item name="boxStrokeColor">@color/mage_text_input_box_stroke</item>
-        <item name="boxBackgroundColor">?attr/colorPrimaryDark</item>
-    </style>
+    <style name="MageTheme.TextInputStyle.ExposedDropdownMenu" parent="Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu" />
 
-    <style name="MageTheme.Button" parent="Widget.MaterialComponents.Button">
-        <item name="tint">?attr/colorOnSecondary</item>
-        <item name="android:backgroundTint">?attr/colorSecondary</item>
-        <item name="android:textColor">?attr/colorOnSecondary</item>
-        <item name="iconTint">?attr/colorOnSecondary</item>
-    </style>
+    <style name="MageTheme.Button" parent="Widget.Material3.Button" />
 
-    <style name="MageTheme.TextAppearanceButton" parent="TextAppearance.MaterialComponents.Button">
-        <item name="android:textColor">?attr/colorOnSecondary</item>
-    </style>
-
-    <style name="StreamTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
-        <item name="colorPrimary">@color/primary</item>
-        <item name="colorPrimaryDark">@color/primary_dark</item>
-        <item name="colorAccent">@color/accent</item>
-        <item name="materialAlertDialogTheme">@style/AppTheme.AlertDialog</item>
+    <style name="StreamTheme" parent="AppTheme">
         <item name="android:windowBackground">@color/stream_background</item>
         <item name="android:windowTranslucentStatus">true</item>
         <item name="android:windowTranslucentNavigation">true</item>
+    </style>
+
+    <style name="ConsoleCard" parent="Widget.Material3.CardView.Filled">
+        <item name="cardBackgroundColor">?attr/colorSurfaceContainerHigh</item>
+        <item name="cardCornerRadius">24dp</item>
+        <item name="strokeColor">@color/console_card_stroke</item>
+        <item name="strokeWidth">3dp</item>
+    </style>
+
+    <style name="SheetItem">
+        <item name="android:orientation">horizontal</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:paddingStart">24dp</item>
+        <item name="android:paddingEnd">24dp</item>
+        <item name="android:paddingTop">12dp</item>
+        <item name="android:paddingBottom">12dp</item>
+        <item name="android:background">?attr/selectableItemBackground</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+
+    <style name="SheetItemIcon">
+        <item name="android:padding">8dp</item>
+        <item name="android:layout_marginEnd">16dp</item>
+        <item name="android:background">@drawable/sheet_icon_background</item>
+        <item name="tint">?attr/colorOnPrimaryContainer</item>
+    </style>
+
+    <style name="RegistStepCard" parent="Widget.Material3.CardView.Filled">
+        <item name="cardBackgroundColor">?attr/colorSurfaceContainer</item>
+        <item name="cardCornerRadius">20dp</item>
+        <item name="android:layout_marginBottom">12dp</item>
+    </style>
+
+    <style name="RegistStepHeader">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginBottom">12dp</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:gravity">center_vertical</item>
+    </style>
+
+    <style name="RegistStepNumber">
+        <item name="android:layout_width">28dp</item>
+        <item name="android:layout_height">28dp</item>
+        <item name="android:layout_marginEnd">12dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:background">@drawable/step_number_background</item>
+        <item name="android:textAppearance">?attr/textAppearanceLabelLarge</item>
+        <item name="android:textColor">?attr/colorOnPrimaryContainer</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="RegistStepTitle">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textAppearance">?attr/textAppearanceTitleMedium</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+    </style>
+
+    <style name="RegistGuideRow">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginBottom">10dp</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:gravity">center_vertical</item>
+    </style>
+
+    <style name="RegistGuideIcon">
+        <item name="android:layout_width">36dp</item>
+        <item name="android:layout_height">36dp</item>
+        <item name="android:layout_marginEnd">12dp</item>
+        <item name="android:padding">6dp</item>
+        <item name="android:importantForAccessibility">no</item>
+        <item name="tint">?attr/colorOnSurfaceVariant</item>
+    </style>
+
+    <style name="RegistGuideText">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:textAppearance">?attr/textAppearanceBodyMedium</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+    </style>
+
+    <style name="StatusChip">
+        <item name="android:textAppearance">?attr/textAppearanceLabelLarge</item>
+        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingEnd">12dp</item>
+        <item name="android:paddingTop">4dp</item>
+        <item name="android:paddingBottom">4dp</item>
+        <item name="android:drawablePadding">6dp</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:background">@drawable/status_chip_background</item>
     </style>
 </resources>

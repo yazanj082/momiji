@@ -3,8 +3,13 @@
 package com.metallic.chiaki.main
 
 import android.app.ActivityOptions
+import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Rect
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -17,13 +22,18 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
-import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.ConcatAdapter
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.metallic.chiaki.R
 import com.metallic.chiaki.common.*
 import com.metallic.chiaki.common.ext.putRevealExtra
 import com.metallic.chiaki.common.ext.viewModelFactory
 import com.metallic.chiaki.databinding.ActivityMainBinding
+import com.metallic.chiaki.databinding.SheetAddConsoleBinding
 import com.metallic.chiaki.lib.ConnectInfo
 import com.metallic.chiaki.lib.DiscoveryHost
 import com.metallic.chiaki.manualconsole.EditManualConsoleActivity
@@ -37,48 +47,66 @@ class MainActivity : AppCompatActivity()
 	{
 		// A PS5 takes around 20s to wake up from rest mode
 		private const val WAKEUP_CONNECT_TIMEOUT_MS = 90000L
+		private const val MIN_CARD_WIDTH_DP = 320
+
+		/** MacAddress value of a console that was just registered, to connect to as soon as it is listed */
+		const val EXTRA_CONNECT_HOST_MAC = "connect_host_mac"
 	}
 
 	private lateinit var viewModel: MainViewModel
 
 	private lateinit var binding: ActivityMainBinding
+	private lateinit var layoutManager: GridLayoutManager
 	private var discoveryMenuItem: MenuItem? = null
+
+	private val supportUrl get() = getString(R.string.support_url)
+	private var connectHostMac: Long? = null
 
 	override fun onCreate(savedInstanceState: Bundle?)
 	{
 		super.onCreate(savedInstanceState)
 		binding = ActivityMainBinding.inflate(layoutInflater)
 		setContentView(binding.root)
+		connectHostMac = intent.getLongExtra(EXTRA_CONNECT_HOST_MAC, -1).takeIf { it >= 0 }
 
 		title = ""
 		setSupportActionBar(binding.toolbar)
 
-		binding.floatingActionButton.setOnClickListener {
-			expandFloatingActionButton(!binding.floatingActionButton.isExpanded)
-		}
-		binding.floatingActionButtonDialBackground.setOnClickListener {
-			expandFloatingActionButton(false)
-		}
-
-		binding.addManualButton.setOnClickListener { addManualConsole() }
-		binding.addManualLabelButton.setOnClickListener { addManualConsole() }
-
-		binding.registerButton.setOnClickListener { showRegistration() }
-		binding.registerLabelButton.setOnClickListener { showRegistration() }
+		binding.floatingActionButton.setOnClickListener { showAddConsoleSheet() }
+		binding.emptyDiscoverButton.setOnClickListener { viewModel.discoveryManager.active = true }
 
 		viewModel = ViewModelProvider(this, viewModelFactory { MainViewModel(getDatabase(this), Preferences(this)) })
 			.get(MainViewModel::class.java)
 
-		val recyclerViewAdapter = DisplayHostRecyclerViewAdapter(this::hostTriggered, this::wakeupHost, this::editHost, this::deleteHost)
-		binding.hostsRecyclerView.adapter = recyclerViewAdapter
-		binding.hostsRecyclerView.layoutManager = LinearLayoutManager(this)
+		val hostsAdapter = DisplayHostRecyclerViewAdapter(this::hostTriggered, this::wakeupHost, this::editHost, this::deleteHost)
+		val supportAdapter = SupportFooterAdapter(this::openSupportPage)
+		binding.hostsRecyclerView.adapter = ConcatAdapter(hostsAdapter, supportAdapter)
+		layoutManager = GridLayoutManager(this, 1)
+		layoutManager.spanSizeLookup = object: GridLayoutManager.SpanSizeLookup()
+		{
+			override fun getSpanSize(position: Int) = if(position < hostsAdapter.itemCount) 1 else layoutManager.spanCount
+		}
+		binding.hostsRecyclerView.layoutManager = layoutManager
+		updateSpanCount()
+		binding.hostsRecyclerView.addOnScrollListener(object: RecyclerView.OnScrollListener()
+		{
+			override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int)
+			{
+				if(dy > 0)
+					binding.floatingActionButton.shrink()
+				else if(dy < 0)
+					binding.floatingActionButton.extend()
+			}
+		})
 		viewModel.displayHosts.observe(this, Observer {
 			val top = binding.hostsRecyclerView.computeVerticalScrollOffset() == 0
-			recyclerViewAdapter.hosts = it
+			hostsAdapter.hosts = it
+			supportAdapter.visible = it.isNotEmpty() && supportUrl.isNotEmpty()
 			if(top)
 				binding.hostsRecyclerView.scrollToPosition(0)
 			updateEmptyInfo()
 			connectIfWokenUp(it)
+			connectRegisteredHost(it)
 			// With a controller, the first console is ready to be picked right away
 			if(currentFocus == null && it.isNotEmpty() && Preferences(this).isTv)
 				binding.hostsRecyclerView.post {
@@ -99,16 +127,65 @@ class MainActivity : AppCompatActivity()
 			binding.emptyInfoLayout.visibility = View.VISIBLE
 			val discoveryActive = viewModel.discoveryActive.value ?: false
 			binding.emptyInfoImageView.setImageResource(if(discoveryActive) R.drawable.ic_discover_on else R.drawable.ic_discover_off)
-			binding.emptyInfoTextView.setText(if(discoveryActive) R.string.display_hosts_empty_discovery_on_info else R.string.display_hosts_empty_discovery_off_info)
+			binding.emptyInfoTextView.setText(when
+			{
+				!discoveryActive -> R.string.display_hosts_empty_discovery_off_info
+				isVpnActive() -> R.string.display_hosts_empty_vpn_info
+				else -> R.string.display_hosts_empty_discovery_on_info
+			})
+			binding.emptyDiscoverButton.visibility = if(discoveryActive) View.GONE else View.VISIBLE
 		}
 		else
 			binding.emptyInfoLayout.visibility = View.GONE
 	}
 
-	private fun expandFloatingActionButton(expand: Boolean)
+	private fun isVpnActive(): Boolean
 	{
-		binding.floatingActionButton.isExpanded = expand
-		binding.floatingActionButton.isActivated = binding.floatingActionButton.isExpanded
+		val connectivityManager = getSystemService(ConnectivityManager::class.java) ?: return false
+		val network = connectivityManager.activeNetwork ?: return false
+		return connectivityManager.getNetworkCapabilities(network)?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) ?: false
+	}
+
+	override fun onConfigurationChanged(newConfig: Configuration)
+	{
+		super.onConfigurationChanged(newConfig)
+		updateSpanCount()
+	}
+
+	private fun updateSpanCount()
+	{
+		layoutManager.spanCount = (resources.configuration.screenWidthDp / MIN_CARD_WIDTH_DP).coerceAtLeast(1)
+	}
+
+	private fun showAddConsoleSheet()
+	{
+		val dialog = BottomSheetDialog(this)
+		val sheet = SheetAddConsoleBinding.inflate(layoutInflater)
+		sheet.registerItem.setOnClickListener {
+			dialog.dismiss()
+			showRegistration()
+		}
+		sheet.addManualItem.setOnClickListener {
+			dialog.dismiss()
+			addManualConsole()
+		}
+		dialog.setContentView(sheet.root)
+		dialog.behavior.state = BottomSheetBehavior.STATE_EXPANDED
+		dialog.behavior.skipCollapsed = true
+		dialog.show()
+	}
+
+	private fun openSupportPage()
+	{
+		try
+		{
+			startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(supportUrl)))
+		}
+		catch(e: ActivityNotFoundException)
+		{
+			// TV boxes may come without a browser
+			Toast.makeText(this, supportUrl, Toast.LENGTH_LONG).show()
+		}
 	}
 
 	override fun onStart()
@@ -126,16 +203,6 @@ class MainActivity : AppCompatActivity()
 		viewModel.discoveryManager.pause()
 	}
 
-	override fun onBackPressed()
-	{
-		if(binding.floatingActionButton.isExpanded)
-		{
-			expandFloatingActionButton(false)
-			return
-		}
-		super.onBackPressed()
-	}
-
 	override fun onCreateOptionsMenu(menu: Menu): Boolean
 	{
 		menuInflater.inflate(R.menu.main, menu)
@@ -145,6 +212,7 @@ class MainActivity : AppCompatActivity()
 		updateDiscoveryMenuItem(discoveryItem, discoveryActive)
 		val preferences = Preferences(this)
 		menu.findItem(R.id.action_android_settings).isVisible = preferences.isTv || preferences.homeScreen
+		menu.findItem(R.id.action_support).isVisible = supportUrl.isNotEmpty()
 		return true
 	}
 
@@ -176,13 +244,19 @@ class MainActivity : AppCompatActivity()
 			true
 		}
 
+		R.id.action_support ->
+		{
+			openSupportPage()
+			true
+		}
+
 		else -> super.onOptionsItemSelected(item)
 	}
 
 	private fun addManualConsole()
 	{
 		Intent(this, EditManualConsoleActivity::class.java).also {
-			it.putRevealExtra(binding.addManualButton, binding.rootLayout)
+			it.putRevealExtra(binding.floatingActionButton, binding.rootLayout)
 			startActivity(it, ActivityOptions.makeSceneTransitionAnimation(this).toBundle())
 		}
 	}
@@ -190,7 +264,7 @@ class MainActivity : AppCompatActivity()
 	private fun showRegistration()
 	{
 		Intent(this, RegistActivity::class.java).also {
-			it.putRevealExtra(binding.registerButton, binding.rootLayout)
+			it.putRevealExtra(binding.floatingActionButton, binding.rootLayout)
 			startActivity(it, ActivityOptions.makeSceneTransitionAnimation(this).toBundle())
 		}
 	}
@@ -294,6 +368,21 @@ class MainActivity : AppCompatActivity()
 			it is DiscoveredDisplayHost && it.id == waitingFor.id && it.discoveredHost.state == DiscoveryHost.State.READY
 		} ?: return
 		stopWakeupConnect()
+		hostTriggered(host)
+	}
+
+	override fun onNewIntent(intent: Intent)
+	{
+		super.onNewIntent(intent)
+		connectHostMac = intent.getLongExtra(EXTRA_CONNECT_HOST_MAC, -1).takeIf { it >= 0 }
+		viewModel.displayHosts.value?.let { connectRegisteredHost(it) }
+	}
+
+	private fun connectRegisteredHost(hosts: List<DisplayHost>)
+	{
+		val mac = connectHostMac ?: return
+		val host = hosts.firstOrNull { it.registeredHost?.serverMac?.value == mac } ?: return
+		connectHostMac = null
 		hostTriggered(host)
 	}
 

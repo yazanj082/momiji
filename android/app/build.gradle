@@ -22,11 +22,11 @@ android {
     compileSdk 34
     ndkVersion '26.1.10909125'
     defaultConfig {
-        applicationId "com.metallic.chiaki"
+        applicationId "io.github.yazanj082.momiji"
         minSdk 24
         targetSdk 34
-        versionCode 11
-        versionName chiakiVersion
+        versionCode 12
+        versionName "1.0.0"
         externalNativeBuild {
             cmake {
                 arguments "-DCHIAKI_ENABLE_TESTS=OFF",
@@ -104,6 +104,7 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.browser:browser:1.8.0'
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.recyclerview:recyclerview:1.3.2'

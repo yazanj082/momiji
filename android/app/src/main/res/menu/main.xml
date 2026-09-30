@@ -13,6 +13,13 @@
         android:id="@+id/action_settings"
         android:icon="@drawable/ic_settings"
         android:title="@string/action_settings"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_support"
+        android:icon="@drawable/ic_favorite"
+        android:title="@string/action_support"
+        android:visible="false"
         app:showAsAction="never" />
 
     <!-- Shown on TV boxes and when Chiaki is the home screen, to get to Wi-Fi, Bluetooth etc. -->

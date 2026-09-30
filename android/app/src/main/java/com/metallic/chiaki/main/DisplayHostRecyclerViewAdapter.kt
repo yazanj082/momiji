@@ -2,14 +2,14 @@
 
 package com.metallic.chiaki.main
 
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.animation.AnimationUtils
 import android.widget.PopupMenu
+import androidx.core.content.ContextCompat
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
+import androidx.core.widget.TextViewCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.metallic.chiaki.R
@@ -54,48 +54,55 @@ class DisplayHostRecyclerViewAdapter(
 	{
 		val context = holder.itemView.context
 		val host = hosts[position]
+		val state = (host as? DiscoveredDisplayHost)?.discoveredHost?.state
 		holder.binding.also {
-			it.nameTextView.text = host.name
-			it.hostTextView.text = context.getString(R.string.display_host_host, host.host)
-			val id = host.id
-			it.idTextView.text =
-				if(id != null)
-					context.getString(
-						if(host.isRegistered)
-							R.string.display_host_id_registered
-						else
-							R.string.display_host_id_unregistered,
-						id)
-				else
-					""
-			it.bottomInfoTextView.text = (host as? DiscoveredDisplayHost)?.discoveredHost?.let { discoveredHost ->
-				if(discoveredHost.runningAppName != null || discoveredHost.runningAppTitleid != null)
-					context.getString(R.string.display_host_app_title_id, discoveredHost.runningAppName ?: "", discoveredHost.runningAppTitleid ?: "")
-				else
-					""
-			} ?: ""
-			it.discoveredIndicatorLayout.visibility = if(host is DiscoveredDisplayHost) View.VISIBLE else View.GONE
+			val name = host.name ?: host.host
+			it.nameTextView.text = name
+			// Only discovery or registration tell which console it is
+			val consoleType = if(host is DiscoveredDisplayHost || host.isRegistered) (if(host.isPS5) "PS5" else "PS4") else null
+			it.hostTextView.text = when
+			{
+				consoleType == null -> context.getString(R.string.display_host_not_registered)
+				name == host.host -> consoleType
+				else -> context.getString(R.string.display_host_details, consoleType, host.host)
+			}
+			val runningApp = (host as? DiscoveredDisplayHost)?.discoveredHost?.runningAppName
+			it.bottomInfoTextView.isVisible = runningApp != null
+			it.bottomInfoTextView.text = runningApp?.let { app -> context.getString(R.string.display_host_playing, app) }
+
+			val (statusText, statusColor, artBackground) = when(state)
+			{
+				DiscoveryHost.State.READY -> Triple(R.string.display_host_state_ready, R.color.state_ready, R.drawable.console_art_ready)
+				DiscoveryHost.State.STANDBY -> Triple(R.string.display_host_state_standby, R.color.state_standby, R.drawable.console_art_standby)
+				else -> Triple(R.string.display_host_state_manual, R.color.state_unknown, R.drawable.console_art_unknown)
+			}
+			it.statusTextView.setText(statusText)
+			TextViewCompat.setCompoundDrawableTintList(it.statusTextView, ContextCompat.getColorStateList(context, statusColor))
+			it.artLayout.setBackgroundResource(artBackground)
 			it.stateIndicatorImageView.setImageResource(
-				when
+				when(state)
 				{
-					host is DiscoveredDisplayHost -> when(host.discoveredHost.state)
-					{
-						DiscoveryHost.State.STANDBY -> if(host.isPS5) R.drawable.ic_console_ps5_standby else R.drawable.ic_console_standby
-						DiscoveryHost.State.READY -> if(host.isPS5) R.drawable.ic_console_ps5_ready else R.drawable.ic_console_ready
-						else -> if(host.isPS5) R.drawable.ic_console_ps5 else R.drawable.ic_console
-					}
-					host.isPS5 -> R.drawable.ic_console_ps5
-					else -> R.drawable.ic_console
+					DiscoveryHost.State.STANDBY -> if(host.isPS5) R.drawable.ic_console_ps5_standby else R.drawable.ic_console_standby
+					DiscoveryHost.State.READY -> if(host.isPS5) R.drawable.ic_console_ps5_ready else R.drawable.ic_console_ready
+					else -> if(host.isPS5 || consoleType == null) R.drawable.ic_console_ps5 else R.drawable.ic_console
 				}
 			)
+
+			val (actionText, actionIcon) = when
+			{
+				!host.isRegistered -> R.string.action_register_short to R.drawable.ic_link
+				state == DiscoveryHost.State.STANDBY -> R.string.action_wakeup_play to R.drawable.ic_power
+				else -> R.string.action_play to R.drawable.ic_play
+			}
+			it.primaryActionButton.setText(actionText)
+			it.primaryActionButton.setIconResource(actionIcon)
 			it.root.setOnClickListener { clickCallback(host) }
 
 			val canWakeup = host.registeredHost != null
 			val canEditDelete = host is ManualDisplayHost
 			if(canWakeup || canEditDelete)
 			{
-				it.menuButton.isVisible = true
-				it.menuButton.setOnClickListener { _ ->
+				val showMenu = { _: View ->
 					val menu = PopupMenu(context, it.menuButton)
 					menu.menuInflater.inflate(R.menu.display_host, menu.menu)
 					menu.menu.findItem(R.id.action_wakeup).isVisible = canWakeup
@@ -113,11 +120,16 @@ class DisplayHostRecyclerViewAdapter(
 					}
 					menu.show()
 				}
+				it.menuButton.isVisible = true
+				it.menuButton.setOnClickListener(showMenu)
+				// With a remote or controller, holding the button on a console opens its options
+				it.root.setOnLongClickListener { view -> showMenu(view); true }
 			}
 			else
 			{
 				it.menuButton.isGone = true
 				it.menuButton.setOnClickListener(null)
+				it.root.setOnLongClickListener(null)
 			}
 		}
 	}

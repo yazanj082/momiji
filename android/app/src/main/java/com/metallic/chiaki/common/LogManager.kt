@@ -3,13 +3,14 @@
 package com.metallic.chiaki.common
 
 import android.content.Context
+import com.metallic.chiaki.BuildConfig
 import java.io.File
 import java.io.FilenameFilter
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.regex.Pattern
 
-val fileProviderAuthority = "com.metallic.chiaki.fileprovider"
+val fileProviderAuthority = "${BuildConfig.APPLICATION_ID}.fileprovider"
 private const val baseDirName = "session_logs" // must be in sync with filepaths.xml
 private val dateFormat = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss-SSS", Locale.US)
 private const val filePrefix = "chiaki_session_"

@@ -1,15 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="primary">#162d50</color>
-    <color name="primary_dark">#000128</color>
-    <color name="accent">#ffaaee</color>
+    <!-- Momiji: maple leaves on an autumn night -->
+    <color name="md_primary">#FF9166</color>
+    <color name="md_on_primary">#3D1203</color>
+    <color name="md_primary_container">#6E2A12</color>
+    <color name="md_on_primary_container">#FFDBCF</color>
+    <color name="md_secondary">#F4C06C</color>
+    <color name="md_on_secondary">#402D00</color>
+    <color name="md_secondary_container">#433730</color>
+    <color name="md_on_secondary_container">#FFE3C7</color>
+    <color name="md_tertiary">#9FD49B</color>
+    <color name="md_on_tertiary">#0B390F</color>
+    <color name="md_tertiary_container">#245024</color>
+    <color name="md_on_tertiary_container">#BBF0B5</color>
+    <color name="md_error">#FFB4AB</color>
+    <color name="md_on_error">#690005</color>
+    <color name="md_error_container">#93000A</color>
+    <color name="md_on_error_container">#FFDAD6</color>
+    <color name="md_background">#151312</color>
+    <color name="md_surface">#151312</color>
+    <color name="md_on_surface">#EDE0DC</color>
+    <color name="md_surface_variant">#53433F</color>
+    <color name="md_on_surface_variant">#D8C2BB</color>
+    <color name="md_surface_container_lowest">#100D0C</color>
+    <color name="md_surface_container_low">#1D1A18</color>
+    <color name="md_surface_container">#221E1C</color>
+    <color name="md_surface_container_high">#2C2826</color>
+    <color name="md_surface_container_highest">#373230</color>
+    <color name="md_outline">#A08C86</color>
+    <color name="md_outline_variant">#53433F</color>
+    <color name="md_inverse_surface">#EDE0DC</color>
+    <color name="md_inverse_on_surface">#362F2D</color>
+    <color name="md_inverse_primary">#9C4323</color>
+
+    <!-- Console states -->
+    <color name="state_ready">#8BD88F</color>
+    <color name="state_standby">#F4C06C</color>
+    <color name="state_unknown">#A08C86</color>
+
+    <color name="accent">@color/md_primary</color>
 
     <color name="stream_text">@android:color/white</color>
     <color name="stream_background">@android:color/black</color>
-    <color name="stream_overlay_background">#77000000</color>
-
-    <color name="floating_action_button_speed_dial_background">#fafafa</color>
-    <color name="floating_action_button_speed_dial_tint">#333333</color>
+    <color name="stream_overlay_background">#99000000</color>
 
     <color name="control_primary">#22ffffff</color>
     <color name="control_pressed">#88ffffff</color>

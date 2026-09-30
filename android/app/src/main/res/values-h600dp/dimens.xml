@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="console_art_height">136dp</dimen>
+    <dimen name="console_image_height">64dp</dimen>
+    <dimen name="console_image_offset">16dp</dimen>
+</resources>

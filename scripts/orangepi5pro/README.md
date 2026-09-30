@@ -1,12 +1,12 @@
 # Orange Pi 5 Pro PS5 Remote Play image
 
 Turns Orange Pi's Android 12 TV box firmware for the Orange Pi 5 Pro (RK3588S) into an
-SD card image with Chiaki preinstalled, from Linux and without root. Orange Pi only
+SD card image with Momiji preinstalled, from Linux and without root. Orange Pi only
 ships this firmware as a Rockchip `update.img` for its Windows SDDiskTool.
 
 The image adds to the firmware:
 
-- Chiaki as a system app (`/product/app/Chiaki`).
+- Momiji as a system app (`/product/app/Momiji`).
 - Read/write access to `/dev/hidraw*` for apps, for adaptive triggers and the lightbar.
 - Input configs for the DualSense/DualShock 4 touchpad and motion sensors.
 - ADB over the network (port 5555, already on in this firmware), authorized for your
@@ -39,4 +39,4 @@ The first boot runs recovery, which formats the data partition, and takes a few 
   probe and DualSense controllers don't work, over USB or Bluetooth. Xbox controllers
   work fully, including rumble.
 - No Google Play Services.
-- AAudio streams get disconnected over and over, Chiaki falls back to OpenSL ES.
+- AAudio streams get disconnected over and over, Momiji falls back to OpenSL ES.

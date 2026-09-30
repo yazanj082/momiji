@@ -14,6 +14,12 @@
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.gamepad" android:required="false" />
+    <!-- Browsers that can show Sony's sign-in as part of the app -->
+    <queries>
+        <intent>
+            <action android:name="android.support.customtabs.action.CustomTabsService" />
+        </intent>
+    </queries>
 
     <application
         android:allowBackup="true"
@@ -33,7 +39,7 @@
         <meta-data android:name="com.samsung.android.dex.transient_bar_delay" android:value="1500" />
 
         <provider
-            android:authorities="com.metallic.chiaki.fileprovider"
+            android:authorities="${applicationId}.fileprovider"
             android:name="androidx.core.content.FileProvider"
             android:grantUriPermissions="true"
             android:exported="false">
@@ -94,6 +100,12 @@
             android:theme="@style/MageTheme"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize" />
 
+        <activity
+            android:name=".regist.PsnSignInActivity"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize" />
+        <activity
+            android:name=".regist.PsnSignInReturnActivity"
+            android:exported="false" />
         <activity
             android:name=".manualconsole.EditManualConsoleActivity"
             android:theme="@style/MageTheme"

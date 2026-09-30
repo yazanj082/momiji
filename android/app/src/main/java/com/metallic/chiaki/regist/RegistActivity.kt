@@ -7,9 +7,11 @@ import android.os.Bundle
 import android.util.Base64
 import android.view.View
 import android.view.Window
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
+import androidx.core.view.isVisible
 import com.metallic.chiaki.R
 import com.metallic.chiaki.common.ext.RevealActivity
 import com.metallic.chiaki.databinding.ActivityRegistBinding
@@ -24,10 +26,12 @@ class RegistActivity: AppCompatActivity(), RevealActivity
 		const val EXTRA_HOST = "regist_host"
 		const val EXTRA_BROADCAST = "regist_broadcast"
 		const val EXTRA_ASSIGN_MANUAL_HOST_ID = "assign_manual_host_id"
+		const val EXTRA_PSN_ACCOUNT_ID = "psn_account_id"
 
 		private const val PIN_LENGTH = 8
 
 		private const val REQUEST_REGIST = 1
+		private const val REQUEST_PSN_SIGN_IN = 2
 	}
 
 	private lateinit var viewModel: RegistViewModel
@@ -50,6 +54,8 @@ class RegistActivity: AppCompatActivity(), RevealActivity
 		binding.broadcastCheckBox.isChecked = intent.getBooleanExtra(EXTRA_BROADCAST, true)
 
 		binding.registButton.setOnClickListener { doRegist() }
+		binding.psnSignInButton.setOnClickListener { signInForAccountId() }
+		binding.psnSignInGuideLayout.isVisible = PsnSignIn.browserAvailable(this)
 
 		binding.ps4VersionRadioGroup.check(when(viewModel.ps4Version.value ?: RegistViewModel.ConsoleVersion.PS5) {
 			RegistViewModel.ConsoleVersion.PS5 -> R.id.ps5RadioButton
@@ -79,6 +85,31 @@ class RegistActivity: AppCompatActivity(), RevealActivity
 			binding.pinHelpBeforeTextView.setText(if(it.isPS5) R.string.regist_pin_instructions_ps5_before else R.string.regist_pin_instructions_ps4_before)
 			binding.pinHelpNavigationTextView.setText(if(it.isPS5) R.string.regist_pin_instructions_ps5_navigation else R.string.regist_pin_instructions_ps4_navigation)
 		})
+	}
+
+	private fun signInForAccountId()
+	{
+		if(!PsnSignIn.browserAvailable(this))
+		{
+			startActivityForResult(Intent(this, PsnSignInActivity::class.java), REQUEST_PSN_SIGN_IN)
+			return
+		}
+		PsnSignIn.openInBrowser(this)
+		Toast.makeText(this, R.string.psn_sign_in_reminder, Toast.LENGTH_LONG).show()
+	}
+
+	override fun onNewIntent(intent: Intent)
+	{
+		super.onNewIntent(intent)
+		intent.getStringExtra(EXTRA_PSN_ACCOUNT_ID)?.let { applyPsnAccountId(it) }
+	}
+
+	private fun applyPsnAccountId(accountId: String)
+	{
+		binding.psnIdEditText.setText(accountId)
+		binding.psnIdEditText.error = null
+		binding.psnIdTextInputLayout.helperText = getString(R.string.psn_sign_in_done)
+		Toast.makeText(this, R.string.psn_sign_in_done, Toast.LENGTH_SHORT).show()
 	}
 
 	private fun doRegist()
@@ -144,5 +175,9 @@ class RegistActivity: AppCompatActivity(), RevealActivity
 		super.onActivityResult(requestCode, resultCode, data)
 		if(requestCode == REQUEST_REGIST && resultCode == RESULT_OK)
 			finish()
+		else if(requestCode == REQUEST_PSN_SIGN_IN && resultCode == RESULT_OK)
+		{
+			data?.getStringExtra(PsnSignInActivity.EXTRA_ACCOUNT_ID)?.let { applyPsnAccountId(it) }
+		}
 	}
 }

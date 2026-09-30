@@ -8,18 +8,18 @@
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="?attr/actionBarSize"
         app:layout_constraintTop_toTopOf="parent"
-        android:theme="@style/AppTheme.Toolbar">
-        <androidx.appcompat.widget.AppCompatTextView
+        app:navigationIcon="@drawable/ic_arrow_back"
+        app:navigationIconTint="?attr/colorOnSurface"
+        app:navigationContentDescription="@string/action_back">
+        <TextView
             android:id="@+id/titleTextView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:fontFamily="sans-serif-condensed"
             android:text="@string/title_settings"
-            android:textColor="?attr/colorOnPrimary"
-            android:textSize="20dp"/>
+            android:textAppearance="?attr/textAppearanceTitleLarge"
+            android:textColor="?attr/colorOnSurface" />
     </com.google.android.material.appbar.MaterialToolbar>
 
     <FrameLayout

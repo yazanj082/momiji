@@ -195,4 +195,38 @@
             app:title="@string/preferences_import_settings_title"
             app:icon="@drawable/ic_import"/>
     </PreferenceCategory>
+
+    <PreferenceCategory
+        app:key="category_about"
+        app:title="@string/preferences_category_title_about">
+        <Preference
+            app:key="about_version"
+            app:title="@string/app_name"
+            app:summary=" "
+            app:icon="@drawable/ic_logo"
+            app:selectable="false" />
+
+        <Preference
+            app:key="about_support"
+            app:title="@string/action_support"
+            app:summary="@string/support_info"
+            app:icon="@drawable/ic_favorite"
+            app:isPreferenceVisible="false" />
+
+        <Preference
+            app:key="about_source"
+            app:title="@string/preferences_about_source_title"
+            app:summary="@string/preferences_about_source_summary"
+            app:icon="@drawable/ic_web">
+            <intent
+                android:action="android.intent.action.VIEW"
+                android:data="@string/source_url" />
+        </Preference>
+
+        <Preference
+            app:key="about_credits"
+            app:title="@string/preferences_about_credits_title"
+            app:summary="@string/preferences_about_credits_summary"
+            app:selectable="false" />
+    </PreferenceCategory>
 </PreferenceScreen>
