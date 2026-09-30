@@ -1,0 +1,1 @@
+A technical update so F-Droid can build Momiji. The app works the same as 1.0.0.
