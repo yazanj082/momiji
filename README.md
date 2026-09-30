@@ -44,7 +44,7 @@ python3 scripts/psn-account-id.py
 
 ## Support
 
-Momiji is free. If you enjoy it, you can support its development from the app's settings.
+Momiji is free and has no ads. Ways to support its development are coming soon.
 
 ## Credits
 
