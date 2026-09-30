@@ -1,0 +1,1 @@
+Momiji is now built only from its own source code, which F-Droid requires. The app works the same as 1.0.0.

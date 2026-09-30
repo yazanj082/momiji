@@ -25,8 +25,8 @@ android {
         applicationId "io.github.yazanj082.momiji"
         minSdk 24
         targetSdk 36
-        versionCode 12
-        versionName "1.0.0"
+        versionCode 13
+        versionName "1.0.1"
         externalNativeBuild {
             cmake {
                 arguments "-DCHIAKI_ENABLE_TESTS=OFF",
@@ -45,7 +45,12 @@ android {
                         "-DCHIAKI_ENABLE_STEAM_SHORTCUT=OFF",
                         "-DCHIAKI_ENABLE_STEAMDECK_NATIVE=OFF",
                         // 16 KB memory pages, which Google Play requires for Android 15+ devices
-                        "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384"
+                        "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384",
+                        // Libraries from the repository's submodules, so that building never downloads code
+                        "-DFETCHCONTENT_FULLY_DISCONNECTED=ON",
+                        "-DFETCHCONTENT_SOURCE_DIR_MBEDTLS=" + file("../../third-party/mbedtls").absolutePath,
+                        "-DFETCHCONTENT_SOURCE_DIR_JSON-C=" + file("../../third-party/json-c").absolutePath,
+                        "-DFETCHCONTENT_SOURCE_DIR_MINIUPNPC=" + file("../../third-party/miniupnp").absolutePath
             }
         }
     }

@@ -22,3 +22,16 @@
 [submodule "third-party/cpp-steam-tools"]
 	path = third-party/cpp-steam-tools
 	url = https://github.com/streetpea/cpp-steam-tools.git
+[submodule "third-party/mbedtls"]
+	path = third-party/mbedtls
+	url = https://github.com/Mbed-TLS/mbedtls.git
+[submodule "third-party/json-c"]
+	path = third-party/json-c
+	url = https://github.com/json-c/json-c.git
+	# the build patches its CMake setup in place
+	ignore = dirty
+[submodule "third-party/miniupnp"]
+	path = third-party/miniupnp
+	url = https://github.com/miniupnp/miniupnp.git
+	# the build patches its CMake setup in place
+	ignore = dirty
