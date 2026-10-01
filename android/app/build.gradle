@@ -25,14 +25,22 @@ android {
         applicationId "io.github.yazanj082.momiji"
         minSdk 24
         targetSdk 36
-        versionCode 15
-        versionName "1.0.3"
+        versionCode 16
+        versionName "1.0.4"
         externalNativeBuild {
             cmake {
-                // Reproducible builds: no build machine paths in the native code (e.g. from __FILE__)
+                // Reproducible builds: no build machine paths in the native code (e.g. from __FILE__),
+                // and no math results that the compiler computes with the build machine's libm,
+                // which can differ in the last bit between machines
                 def sourceRoot = file("../..").absolutePath
-                cFlags "-ffile-prefix-map=${sourceRoot}=."
-                cppFlags "-ffile-prefix-map=${sourceRoot}=."
+                def inexactMath = ["sin", "cos", "tan", "asin", "acos", "atan", "atan2", "sinh", "cosh", "tanh",
+                        "asinh", "acosh", "atanh", "exp", "exp2", "exp10", "expm1", "log", "log2", "log10", "log1p",
+                        "pow", "cbrt", "erf", "erfc", "hypot", "lgamma", "tgamma"]
+                // -Wno-documentation: mbedtls's doc comment warnings would fill F-Droid's build log
+                def reproducibleFlags = (["-ffile-prefix-map=${sourceRoot}=.", "-Wno-documentation"] +
+                        inexactMath.collectMany { ["-fno-builtin-${it}", "-fno-builtin-${it}f", "-fno-builtin-${it}l"] }).join(" ")
+                cFlags reproducibleFlags
+                cppFlags reproducibleFlags
                 arguments "-DCHIAKI_ENABLE_TESTS=OFF",
                         "-DCHIAKI_ENABLE_CLI=OFF",
                         "-DCHIAKI_ENABLE_GUI=OFF",
