@@ -25,10 +25,14 @@ android {
         applicationId "io.github.yazanj082.momiji"
         minSdk 24
         targetSdk 36
-        versionCode 14
-        versionName "1.0.2"
+        versionCode 15
+        versionName "1.0.3"
         externalNativeBuild {
             cmake {
+                // Reproducible builds: no build machine paths in the native code (e.g. from __FILE__)
+                def sourceRoot = file("../..").absolutePath
+                cFlags "-ffile-prefix-map=${sourceRoot}=."
+                cppFlags "-ffile-prefix-map=${sourceRoot}=."
                 arguments "-DCHIAKI_ENABLE_TESTS=OFF",
                         "-DCHIAKI_ENABLE_CLI=OFF",
                         "-DCHIAKI_ENABLE_GUI=OFF",
@@ -45,7 +49,7 @@ android {
                         "-DCHIAKI_ENABLE_STEAM_SHORTCUT=OFF",
                         "-DCHIAKI_ENABLE_STEAMDECK_NATIVE=OFF",
                         // 16 KB memory pages, which Google Play requires for Android 15+ devices
-                        "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384",
+                        "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384 -Wl,--build-id=none",
                         // Libraries from the repository's submodules, so that building never downloads code
                         "-DFETCHCONTENT_FULLY_DISCONNECTED=ON",
                         "-DFETCHCONTENT_SOURCE_DIR_MBEDTLS=" + file("../../third-party/mbedtls").absolutePath,
@@ -108,6 +112,13 @@ android {
         signingConfigs.release.keyPassword = properties.get("chiakiKeyPW")
     } else {
         println("Signing not enabled")
+    }
+}
+
+// Reproducible F-Droid builds: the baseline profiles AGP generates differ between machines
+tasks.configureEach { task ->
+    if (task.name.contains("ArtProfile") && task.name.contains("Fdroid")) {
+        task.enabled = false
     }
 }
 

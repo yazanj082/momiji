@@ -1,0 +1,1 @@
+Reproducible builds: the F-Droid version is now signed with the same key as the releases on GitHub. The app works the same as before.
