@@ -75,6 +75,11 @@ android {
             dimension "store"
         }
     }
+    // F-Droid rejects APKs with the "Dependency metadata" signing block, which is encrypted for Google.
+    // App Bundles keep it, Google Play uses it.
+    dependenciesInfo {
+        includeInApk = false
+    }
     buildFeatures {
         viewBinding true
         buildConfig true
