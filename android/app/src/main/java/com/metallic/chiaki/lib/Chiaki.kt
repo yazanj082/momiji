@@ -316,6 +316,9 @@ class QuitReason(val value: Int)
 	override fun toString() = ChiakiNative.quitReasonToString(value)
 
 	val isError = ChiakiNative.quitReasonIsError(value)
+
+	/** The console is in another Remote Play session, which it still is for some seconds after one ended */
+	val isRpInUse get() = value == 4 // CHIAKI_QUIT_REASON_SESSION_REQUEST_RP_IN_USE
 }
 
 sealed class Event

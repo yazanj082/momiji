@@ -11,26 +11,36 @@ import com.metallic.chiaki.lib.*
  * Remote Play session, so this connects one in the background, sends it and disconnects.
  * @param done called on the main thread with whether the console got the command, unless canceled
  */
-class RestModeRequest(connectInfo: ConnectInfo, private val done: (success: Boolean) -> Unit)
+class RestModeRequest(private val connectInfo: ConnectInfo, private val done: (success: Boolean) -> Unit)
 {
 	companion object
 	{
 		// Time for the command to reach the console before disconnecting
 		private const val DISCONNECT_DELAY_MS = 1000L
+		// For some seconds after streaming, a console turns down new sessions as in use
+		private const val IN_USE_RETRY_DELAY_MS = 3000L
+		private const val IN_USE_RETRIES = 5
 	}
 
 	private val handler = Handler(Looper.getMainLooper())
 	private var session: Session? = null
+	private var retries = 0
 	private var sent = false
 	private var finished = false
 
 	init
 	{
+		connect()
+	}
+
+	private fun connect()
+	{
 		try
 		{
 			val session = Session(connectInfo, null, false)
 			this.session = session
-			session.eventCallback = { event -> handler.post { sessionEvent(event) } }
+			// Events of a session given up on can still come in
+			session.eventCallback = { event -> handler.post { if(this.session === session) sessionEvent(event) } }
 			if(!session.start().isSuccess)
 				handler.post { finish(false) }
 		}
@@ -54,8 +64,15 @@ class RestModeRequest(connectInfo: ConnectInfo, private val done: (success: Bool
 			}
 			// A profile with a login passcode needs it, which only streaming asks for
 			is LoginPinRequestEvent -> finish(false)
-			// The console ends the session itself when it goes to rest mode
-			is QuitEvent -> finish(sent)
+			is QuitEvent ->
+				if(!sent && event.reason.isRpInUse && retries < IN_USE_RETRIES)
+				{
+					retries++
+					disposeSession()
+					handler.postDelayed({ connect() }, IN_USE_RETRY_DELAY_MS)
+				}
+				else // The console ends the session itself when it goes to rest mode
+					finish(sent)
 			// Rumble, lights and the like
 			else -> {}
 		}
@@ -69,15 +86,19 @@ class RestModeRequest(connectInfo: ConnectInfo, private val done: (success: Bool
 			return
 		finished = true
 		handler.removeCallbacksAndMessages(null)
-		session?.let {
-			session = null
-			// dispose waits for the session's thread to end
-			Thread {
-				it.stop()
-				it.dispose()
-			}.start()
-		}
+		disposeSession()
 		if(success != null)
 			done(success)
+	}
+
+	private fun disposeSession()
+	{
+		val session = session ?: return
+		this.session = null
+		// dispose waits for the session's thread to end
+		Thread {
+			session.stop()
+			session.dispose()
+		}.start()
 	}
 }
