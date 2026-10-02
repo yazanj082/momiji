@@ -1,0 +1,1 @@
+Manage your consoles: each console's menu, and Settings → Registered consoles, can now change the PSN account a console is registered with (for example for another profile on it), remove its registration, and put it in rest mode without starting a stream. With a TV remote or controller, press right on a console to reach its menu.
