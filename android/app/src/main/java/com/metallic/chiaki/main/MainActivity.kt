@@ -38,6 +38,8 @@ import com.metallic.chiaki.lib.ConnectInfo
 import com.metallic.chiaki.lib.DiscoveryHost
 import com.metallic.chiaki.manualconsole.EditManualConsoleActivity
 import com.metallic.chiaki.regist.RegistActivity
+import com.metallic.chiaki.regist.showRemoveRegistrationDialog
+import com.metallic.chiaki.session.RestModeRequest
 import com.metallic.chiaki.settings.SettingsActivity
 import com.metallic.chiaki.stream.StreamActivity
 import com.metallic.chiaki.common.ext.fitSystemBars
@@ -80,7 +82,8 @@ class MainActivity : AppCompatActivity()
 		viewModel = ViewModelProvider(this, viewModelFactory { MainViewModel(getDatabase(this), Preferences(this)) })
 			.get(MainViewModel::class.java)
 
-		val hostsAdapter = DisplayHostRecyclerViewAdapter(this::hostTriggered, this::wakeupHost, this::editHost, this::deleteHost)
+		val hostsAdapter = DisplayHostRecyclerViewAdapter(this::hostTriggered, this::wakeupHost, this::putInRestMode,
+			this::registerHostAgain, this::removeRegistration, this::editHost, this::deleteHost)
 		val supportAdapter = SupportFooterAdapter(this::openSupportPage)
 		binding.hostsRecyclerView.adapter = ConcatAdapter(hostsAdapter, supportAdapter)
 		layoutManager = GridLayoutManager(this, 1)
@@ -392,6 +395,40 @@ class MainActivity : AppCompatActivity()
 	{
 		val registeredHost = host.registeredHost ?: return
 		viewModel.discoveryManager.sendWakeup(host.host, registeredHost.rpRegistKey, registeredHost.target.isPS5)
+	}
+
+	private fun putInRestMode(host: DisplayHost)
+	{
+		val registeredHost = host.registeredHost ?: return
+		val name = host.name ?: host.host
+		val connectInfo = ConnectInfo(host.isPS5, host.host, registeredHost.rpRegistKey, registeredHost.rpKey, Preferences(this).videoProfile)
+		var request: RestModeRequest? = null
+		val dialog = MaterialAlertDialogBuilder(this)
+			.setMessage(getString(R.string.rest_mode_running, name))
+			.setNegativeButton(android.R.string.cancel) { _, _ -> request?.cancel() }
+			.setOnCancelListener { request?.cancel() }
+			.show()
+		request = RestModeRequest(connectInfo) { success ->
+			if(!isDestroyed)
+				dialog.dismiss()
+			Toast.makeText(applicationContext, getString(if(success) R.string.rest_mode_done else R.string.rest_mode_failed, name), Toast.LENGTH_LONG).show()
+		}
+	}
+
+	/** Registration again, to play on the console with another PSN account */
+	private fun registerHostAgain(host: DisplayHost)
+	{
+		val registeredHost = host.registeredHost ?: return
+		startActivity(RegistActivity.registerAgainIntent(this, registeredHost, host.name, host.host,
+			(host as? ManualDisplayHost)?.manualHost?.id))
+	}
+
+	private fun removeRegistration(host: DisplayHost)
+	{
+		val registeredHost = host.registeredHost ?: return
+		showRemoveRegistrationDialog(this, host.name ?: host.host) {
+			viewModel.removeRegistration(registeredHost)
+		}
 	}
 
 	private fun editHost(host: DisplayHost)

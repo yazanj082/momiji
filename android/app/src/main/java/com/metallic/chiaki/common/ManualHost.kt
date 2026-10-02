@@ -55,4 +55,12 @@ interface ManualHostDao
 
 	@Update
 	fun update(host: ManualHost): Completable
+
+	// Blocking, for the transaction in AppDatabase.saveRegisteredHost
+
+	@Query("UPDATE manual_host SET registered_host = :registeredHostId WHERE id = :manualHostId")
+	fun assignRegisteredHostBlocking(manualHostId: Long, registeredHostId: Long)
+
+	@Query("UPDATE manual_host SET registered_host = :registeredHostId WHERE registered_host IN (:oldRegisteredHostIds)")
+	fun moveToRegisteredHost(oldRegisteredHostIds: List<Long>, registeredHostId: Long)
 }

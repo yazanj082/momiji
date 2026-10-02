@@ -17,11 +17,13 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.metallic.chiaki.R
+import com.metallic.chiaki.common.RegisteredHost
 import com.metallic.chiaki.common.ext.putRevealExtra
 import com.metallic.chiaki.common.ext.viewModelFactory
 import com.metallic.chiaki.common.getDatabase
 import com.metallic.chiaki.databinding.FragmentSettingsRegisteredHostsBinding
 import com.metallic.chiaki.regist.RegistActivity
+import com.metallic.chiaki.regist.showRemoveRegistrationDialog
 
 class SettingsRegisteredHostsFragment: AppCompatDialogFragment(), TitleFragment
 {
@@ -42,7 +44,7 @@ class SettingsRegisteredHostsFragment: AppCompatDialogFragment(), TitleFragment
 		viewModel = ViewModelProvider(this, viewModelFactory { SettingsRegisteredHostsViewModel(getDatabase(context)) })
 			.get(SettingsRegisteredHostsViewModel::class.java)
 
-		val adapter = SettingsRegisteredHostsAdapter()
+		val adapter = SettingsRegisteredHostsAdapter(this::showHostOptions)
 		binding.hostsRecyclerView.layoutManager = LinearLayoutManager(context)
 		binding.hostsRecyclerView.adapter = adapter
 		val itemTouchSwipeCallback = object : ItemTouchSwipeCallback(context)
@@ -51,23 +53,28 @@ class SettingsRegisteredHostsFragment: AppCompatDialogFragment(), TitleFragment
 			{
 				val pos = viewHolder.adapterPosition
 				val host = viewModel.registeredHosts.value?.getOrNull(pos) ?: return
-				MaterialAlertDialogBuilder(viewHolder.itemView.context)
-					.setMessage(getString(R.string.alert_message_delete_registered_host, host.serverNickname, host.serverMac.toString()))
-					.setPositiveButton(R.string.action_delete) { _, _ ->
-						viewModel.deleteHost(host)
-					}
-					.setNegativeButton(R.string.action_keep) { _, _ ->
-						adapter.notifyItemChanged(pos) // to reset the swipe
-					}
-					.create()
-					.show()
+				removeRegistration(host) {
+					adapter.notifyItemChanged(pos) // to reset the swipe
+				}
 			}
 		}
 		ItemTouchHelper(itemTouchSwipeCallback).attachToRecyclerView(binding.hostsRecyclerView)
 		viewModel.registeredHosts.observe(this, Observer {
+			// A removed row takes the focus of a remote or controller with it
+			val listHadFocus = binding.hostsRecyclerView.hasFocus()
 			adapter.hosts = it
 			binding.emptyInfoGroup.visibility = if(it.isEmpty()) View.VISIBLE else View.GONE
+			if(listHadFocus)
+				binding.hostsRecyclerView.post {
+					if(_binding == null || binding.hostsRecyclerView.hasFocus())
+						return@post
+					if(it.isEmpty())
+						binding.floatingActionButton.requestFocus()
+					else
+						binding.hostsRecyclerView.getChildAt(0)?.requestFocus()
+				}
 		})
+		viewModel.manualHosts.observe(this, Observer {})
 
 		binding.floatingActionButton.setOnClickListener {
 			Intent(context, RegistActivity::class.java).also {
@@ -76,6 +83,35 @@ class SettingsRegisteredHostsFragment: AppCompatDialogFragment(), TitleFragment
 			}
 		}
 	}
+
+	private fun showHostOptions(host: RegisteredHost)
+	{
+		MaterialAlertDialogBuilder(requireContext())
+			.setTitle(hostName(host))
+			.setItems(arrayOf(getString(R.string.action_register_again), getString(R.string.action_remove_registration))) { _, which ->
+				when(which)
+				{
+					0 -> registerAgain(host)
+					else -> removeRegistration(host)
+				}
+			}
+			.show()
+	}
+
+	private fun registerAgain(host: RegisteredHost)
+	{
+		val manualHost = viewModel.manualHosts.value?.firstOrNull { it.registeredHost == host.id }
+		startActivity(RegistActivity.registerAgainIntent(requireContext(), host, hostName(host), manualHost?.host, manualHost?.id))
+	}
+
+	private fun removeRegistration(host: RegisteredHost, keep: () -> Unit = {})
+	{
+		showRemoveRegistrationDialog(requireContext(), hostName(host), keep) {
+			viewModel.removeRegistration(host)
+		}
+	}
+
+	private fun hostName(host: RegisteredHost) = host.serverNickname ?: host.serverMac.toString()
 
 	override fun getTitle(resources: Resources): String = resources.getString(R.string.preferences_registered_hosts_title)
 }

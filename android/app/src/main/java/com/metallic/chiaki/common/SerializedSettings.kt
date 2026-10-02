@@ -249,8 +249,9 @@ abstract class ImportDao
 	@Query("SELECT id, server_mac AS mac FROM registered_host WHERE server_mac IN (:macs)")
 	abstract fun registeredHostsByMac(macs: List<MacAddress>): List<IdWithMac>
 
+	// Room only wraps open methods in a transaction, and needs a name that isn't a Java keyword for that
 	@Transaction
-	fun import(settings: SerializedSettings)
+	open fun importSettings(settings: SerializedSettings)
 	{
 		insertRegisteredHosts(
 			settings.registeredHosts.map {
@@ -285,4 +286,4 @@ abstract class ImportDao
 	}
 }
 
-private fun ImportDao.importCompletable(settings: SerializedSettings) = Completable.fromCallable { import(settings) }
+private fun ImportDao.importCompletable(settings: SerializedSettings) = Completable.fromCallable { importSettings(settings) }

@@ -16,10 +16,15 @@ class SettingsRegisteredHostsViewModel(val database: AppDatabase): ViewModel()
 
 	val registeredHosts = database.registeredHostDao().getAll().toLiveData()
 
-	fun deleteHost(host: RegisteredHost)
+	/** To register a console again at the address it was added with, if it was added by IP address */
+	val manualHosts = database.manualHostDao().getAll().toLiveData()
+
+	/** Removes all registrations of the console, as registering it again would replace all of them */
+	fun removeRegistration(host: RegisteredHost)
 	{
 		database.registeredHostDao()
-			.delete(host)
+			.deleteByMac(host.serverMac)
+			.onErrorComplete()
 			.subscribeOn(Schedulers.io())
 			.subscribe()
 			.addTo(disposable)

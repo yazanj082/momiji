@@ -98,6 +98,7 @@ private class ChiakiNative
 		@JvmStatic external fun sessionSetAudioDevice(ptr: Long, deviceId: Int)
 		@JvmStatic external fun sessionSetHapticsDevice(ptr: Long, deviceId: Int)
 		@JvmStatic external fun sessionSetLoginPin(ptr: Long, pin: String)
+		@JvmStatic external fun sessionGotoBed(ptr: Long): Int
 		@JvmStatic external fun discoveryServiceCreate(result: CreateResult, options: DiscoveryServiceOptions, javaService: DiscoveryService)
 		@JvmStatic external fun discoveryServiceFree(ptr: Long)
 		@JvmStatic external fun discoveryServiceWakeup(ptr: Long, host: String, userCredential: Long, ps5: Boolean)
@@ -449,6 +450,9 @@ class Session(connectInfo: ConnectInfo, logFile: String?, logVerbose: Boolean)
 	{
 		ChiakiNative.sessionSetLoginPin(nativePtr, pin)
 	}
+
+	/** Puts the console in rest mode, once connected */
+	fun gotoBed() = ErrorCode(ChiakiNative.sessionGotoBed(nativePtr))
 
 	/**
 	 * Motion of the controller itself (rad/s and g), which then replaces the motion

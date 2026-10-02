@@ -97,4 +97,18 @@ interface RegisteredHostDao
 
 	@Insert
 	fun insert(host: RegisteredHost): Single<Long>
+
+	// Blocking, for the transaction in AppDatabase.saveRegisteredHost
+
+	@Query("SELECT id FROM registered_host WHERE server_mac == :mac ORDER BY id")
+	fun idsByMac(mac: MacAddress): List<Long>
+
+	@Insert
+	fun insertBlocking(host: RegisteredHost): Long
+
+	@Update
+	fun updateBlocking(host: RegisteredHost)
+
+	@Query("DELETE FROM registered_host WHERE id IN (:ids)")
+	fun deleteByIds(ids: List<Long>)
 }

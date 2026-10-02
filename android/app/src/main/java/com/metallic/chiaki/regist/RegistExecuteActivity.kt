@@ -30,6 +30,8 @@ class RegistExecuteActivity: AppCompatActivity()
 	{
 		const val EXTRA_REGIST_INFO = "regist_info"
 		const val EXTRA_ASSIGN_MANUAL_HOST_ID = "assign_manual_host_id"
+		/** Boolean: registering a console again, whose earlier registration this replaces */
+		const val EXTRA_REPLACE = "replace"
 
 		const val RESULT_FAILED = Activity.RESULT_FIRST_USER
 	}
@@ -72,7 +74,8 @@ class RegistExecuteActivity: AppCompatActivity()
 			{
 				RegistExecuteViewModel.State.FAILED ->
 				{
-					showResult(R.drawable.ic_error, R.color.md_error, getString(R.string.regist_failed_title), R.string.regist_failed_info)
+					showResult(R.drawable.ic_error, R.color.md_error, getString(R.string.regist_failed_title),
+						if(intent.getBooleanExtra(EXTRA_REPLACE, false)) R.string.regist_again_failed_info else R.string.regist_failed_info)
 					binding.primaryButton.isVisible = true
 					binding.primaryButton.setText(R.string.action_try_again)
 					binding.primaryButton.setOnClickListener { finish() }
@@ -121,7 +124,8 @@ class RegistExecuteActivity: AppCompatActivity()
 			if(intent.hasExtra(EXTRA_ASSIGN_MANUAL_HOST_ID))
 				intent.getLongExtra(EXTRA_ASSIGN_MANUAL_HOST_ID, 0)
 			else
-				null)
+				null,
+			intent.getBooleanExtra(EXTRA_REPLACE, false))
 	}
 
 	private fun showResult(icon: Int, color: Int, title: String, info: Int)
@@ -160,10 +164,11 @@ class RegistExecuteActivity: AppCompatActivity()
 		if(dialog != null)
 			return
 
-		val macStr = viewModel.host?.serverMac?.let { MacAddress(it).toString() } ?: ""
+		val host = viewModel.host
+		val name = host?.serverNickname ?: host?.serverMac?.let { MacAddress(it).toString() } ?: ""
 
 		dialog = MaterialAlertDialogBuilder(this)
-			.setMessage(getString(R.string.alert_regist_duplicate, macStr))
+			.setMessage(getString(R.string.alert_regist_duplicate, name))
 			.setNegativeButton(R.string.action_regist_discard) { _, _ ->  }
 			.setPositiveButton(R.string.action_regist_overwrite) { _, _ ->
 				viewModel.saveHost()

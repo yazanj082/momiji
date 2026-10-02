@@ -7,6 +7,7 @@ import androidx.room.*
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.metallic.chiaki.lib.Target
+import java.util.concurrent.Callable
 
 @Database(
 	version = 2,
@@ -17,6 +18,31 @@ abstract class AppDatabase: RoomDatabase()
 	abstract fun registeredHostDao(): RegisteredHostDao
 	abstract fun manualHostDao(): ManualHostDao
 	abstract fun importDao(): ImportDao
+
+	/**
+	 * Saves a new registration of a console. An earlier registration of the same console is
+	 * replaced in place, keeping its id, so that consoles added by IP address stay linked to it.
+	 * Blocks, and returns the registration's id.
+	 */
+	fun saveRegisteredHost(host: RegisteredHost, assignManualHostId: Long?): Long = runInTransaction(Callable {
+		val dao = registeredHostDao()
+		val ids = dao.idsByMac(host.serverMac)
+		val id = ids.firstOrNull() ?: dao.insertBlocking(host)
+		if(ids.isNotEmpty())
+		{
+			dao.updateBlocking(host.copy(id = id))
+			// Importing settings can add the same console more than once
+			val duplicates = ids.drop(1)
+			if(duplicates.isNotEmpty())
+			{
+				manualHostDao().moveToRegisteredHost(duplicates, id)
+				dao.deleteByIds(duplicates)
+			}
+		}
+		if(assignManualHostId != null)
+			manualHostDao().assignRegisteredHostBlocking(assignManualHostId, id)
+		id
+	})
 }
 
 val MIGRATION_1_2 = object : Migration(1, 2)

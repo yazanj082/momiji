@@ -2,6 +2,7 @@
 
 package com.metallic.chiaki.regist
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.Base64
@@ -13,6 +14,7 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.core.view.isVisible
 import com.metallic.chiaki.R
+import com.metallic.chiaki.common.RegisteredHost
 import com.metallic.chiaki.common.ext.RevealActivity
 import com.metallic.chiaki.databinding.ActivityRegistBinding
 import com.metallic.chiaki.lib.RegistInfo
@@ -28,11 +30,33 @@ class RegistActivity: AppCompatActivity(), RevealActivity
 		const val EXTRA_BROADCAST = "regist_broadcast"
 		const val EXTRA_ASSIGN_MANUAL_HOST_ID = "assign_manual_host_id"
 		const val EXTRA_PSN_ACCOUNT_ID = "psn_account_id"
+		/** Int: [Target] value of the console, to preselect its version */
+		const val EXTRA_TARGET = "regist_target"
+		/** String: name of an already registered console that is registered again, replacing its registration */
+		const val EXTRA_REGISTER_AGAIN_NAME = "regist_again_name"
 
 		private const val PIN_LENGTH = 8
 
 		private const val REQUEST_REGIST = 1
 		private const val REQUEST_PSN_SIGN_IN = 2
+
+		/**
+		 * Registration of an already registered console again, to play on it with another PSN account.
+		 * @param host the console's address, or null to find it by broadcast
+		 * @param manualHostId the console added by IP address that this is for, if it is one
+		 */
+		fun registerAgainIntent(context: Context, registeredHost: RegisteredHost, name: String?, host: String?, manualHostId: Long?) =
+			Intent(context, RegistActivity::class.java).also {
+				if(!host.isNullOrEmpty())
+				{
+					it.putExtra(EXTRA_HOST, host)
+					it.putExtra(EXTRA_BROADCAST, false)
+				}
+				it.putExtra(EXTRA_TARGET, registeredHost.target.value)
+				it.putExtra(EXTRA_REGISTER_AGAIN_NAME, name ?: registeredHost.serverNickname ?: registeredHost.serverMac.toString())
+				if(manualHostId != null)
+					it.putExtra(EXTRA_ASSIGN_MANUAL_HOST_ID, manualHostId)
+			}
 	}
 
 	private lateinit var viewModel: RegistViewModel
@@ -51,6 +75,13 @@ class RegistActivity: AppCompatActivity(), RevealActivity
 		handleReveal()
 
 		viewModel = ViewModelProvider(this).get(RegistViewModel::class.java)
+		if(savedInstanceState == null && intent.hasExtra(EXTRA_TARGET))
+			viewModel.ps4Version.value = RegistViewModel.ConsoleVersion.forTarget(Target.fromValue(intent.getIntExtra(EXTRA_TARGET, 0)))
+
+		intent.getStringExtra(EXTRA_REGISTER_AGAIN_NAME)?.let {
+			binding.titleTextView.setText(R.string.title_regist_again)
+			binding.subtitleTextView.text = getString(R.string.regist_again_subtitle, it)
+		}
 
 		binding.hostEditText.setText(intent.getStringExtra(EXTRA_HOST) ?: "255.255.255.255")
 		binding.broadcastCheckBox.isChecked = intent.getBooleanExtra(EXTRA_BROADCAST, true)
@@ -168,6 +199,8 @@ class RegistActivity: AppCompatActivity(), RevealActivity
 			it.putExtra(RegistExecuteActivity.EXTRA_REGIST_INFO, registInfo)
 			if(intent.hasExtra(EXTRA_ASSIGN_MANUAL_HOST_ID))
 				it.putExtra(RegistExecuteActivity.EXTRA_ASSIGN_MANUAL_HOST_ID, intent.getLongExtra(EXTRA_ASSIGN_MANUAL_HOST_ID, 0L))
+			if(intent.hasExtra(EXTRA_REGISTER_AGAIN_NAME))
+				it.putExtra(RegistExecuteActivity.EXTRA_REPLACE, true)
 			startActivityForResult(it, REQUEST_REGIST)
 		}
 	}

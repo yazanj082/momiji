@@ -31,6 +31,9 @@ class DisplayHostDiffCallback(val old: List<DisplayHost>, val new: List<DisplayH
 class DisplayHostRecyclerViewAdapter(
 	val clickCallback: (DisplayHost) -> Unit,
 	val wakeupCallback: (DisplayHost) -> Unit,
+	val restModeCallback: (DisplayHost) -> Unit,
+	val registerAgainCallback: (DisplayHost) -> Unit,
+	val removeRegistrationCallback: (DisplayHost) -> Unit,
 	val editCallback: (DisplayHost) -> Unit,
 	val deleteCallback: (DisplayHost) -> Unit
 ): RecyclerView.Adapter<DisplayHostRecyclerViewAdapter.ViewHolder>()
@@ -98,20 +101,27 @@ class DisplayHostRecyclerViewAdapter(
 			it.primaryActionButton.setIconResource(actionIcon)
 			it.root.setOnClickListener { clickCallback(host) }
 
-			val canWakeup = host.registeredHost != null
+			val registered = host.isRegistered
 			val canEditDelete = host is ManualDisplayHost
-			if(canWakeup || canEditDelete)
+			if(registered || canEditDelete)
 			{
 				val showMenu = { _: View ->
 					val menu = PopupMenu(context, it.menuButton)
 					menu.menuInflater.inflate(R.menu.display_host, menu.menu)
-					menu.menu.findItem(R.id.action_wakeup).isVisible = canWakeup
+					// Consoles added by IP address have no known state, so they get both
+					menu.menu.findItem(R.id.action_wakeup).isVisible = registered && state != DiscoveryHost.State.READY
+					menu.menu.findItem(R.id.action_rest_mode).isVisible = registered && state != DiscoveryHost.State.STANDBY
+					menu.menu.findItem(R.id.action_register_again).isVisible = registered
+					menu.menu.findItem(R.id.action_remove_registration).isVisible = registered
 					menu.menu.findItem(R.id.action_edit).isVisible = canEditDelete
 					menu.menu.findItem(R.id.action_delete).isVisible = canEditDelete
 					menu.setOnMenuItemClickListener { menuItem ->
 						when(menuItem.itemId)
 						{
 							R.id.action_wakeup -> wakeupCallback(host)
+							R.id.action_rest_mode -> restModeCallback(host)
+							R.id.action_register_again -> registerAgainCallback(host)
+							R.id.action_remove_registration -> removeRegistrationCallback(host)
 							R.id.action_edit -> editCallback(host)
 							R.id.action_delete -> deleteCallback(host)
 							else -> return@setOnMenuItemClickListener false
@@ -122,14 +132,17 @@ class DisplayHostRecyclerViewAdapter(
 				}
 				it.menuButton.isVisible = true
 				it.menuButton.setOnClickListener(showMenu)
-				// With a remote or controller, holding the button on a console opens its options
+				// With a remote or controller, holding the button on a console opens its options,
+				// and right goes to their button, which focus search skips as it is inside the card
 				it.root.setOnLongClickListener { view -> showMenu(view); true }
+				it.root.nextFocusRightId = R.id.menuButton
 			}
 			else
 			{
 				it.menuButton.isGone = true
 				it.menuButton.setOnClickListener(null)
 				it.root.setOnLongClickListener(null)
+				it.root.nextFocusRightId = View.NO_ID
 			}
 		}
 	}

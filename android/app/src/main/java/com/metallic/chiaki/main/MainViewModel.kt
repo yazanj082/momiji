@@ -43,6 +43,17 @@ class MainViewModel(val database: AppDatabase, val preferences: Preferences): Vi
 
 	val discoveryActive = discoveryManager.discoveryActive.toLiveData()
 
+	/** Removes all registrations of the console, so consoles added by IP address are no longer linked to it */
+	fun removeRegistration(registeredHost: RegisteredHost)
+	{
+		database.registeredHostDao()
+			.deleteByMac(registeredHost.serverMac)
+			.onErrorComplete()
+			.subscribeOn(Schedulers.io())
+			.subscribe()
+			.addTo(disposable)
+	}
+
 	fun deleteManualHost(manualHost: ManualHost)
 	{
 		database.manualHostDao()

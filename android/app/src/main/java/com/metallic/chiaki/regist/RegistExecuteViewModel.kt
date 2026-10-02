@@ -11,6 +11,7 @@ import com.metallic.chiaki.common.MacAddress
 import com.metallic.chiaki.common.RegisteredHost
 import com.metallic.chiaki.common.ext.toLiveData
 import com.metallic.chiaki.lib.*
+import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.addTo
@@ -42,15 +43,22 @@ class RegistExecuteViewModel(val database: AppDatabase): ViewModel()
 		private set
 
 	private var assignManualHostId: Long? = null
+	private var replace = false
 
-	fun start(info: RegistInfo, assignManualHostId: Long?)
+	/**
+	 * @param replace replace an earlier registration of the console without asking,
+	 * for registering it again with another PSN account
+	 */
+	fun start(info: RegistInfo, assignManualHostId: Long?, replace: Boolean)
 	{
 		if(regist != null)
 			return
 		try
 		{
-			regist = Regist(info, log.log, this::registEvent)
+			// Set before registration starts, whose result comes from another thread
 			this.assignManualHostId = assignManualHostId
+			this.replace = replace
+			regist = Regist(info, log.log, this::registEvent)
 			_state.value = State.RUNNING
 		}
 		catch(error: CreateError)
@@ -78,6 +86,11 @@ class RegistExecuteViewModel(val database: AppDatabase): ViewModel()
 	private fun registSuccess(host: RegistHost)
 	{
 		this.host = host
+		if(replace)
+		{
+			saveHost()
+			return
+		}
 		database.registeredHostDao().getByMac(MacAddress(host.serverMac))
 			.subscribeOn(Schedulers.io())
 			.observeOn(AndroidSchedulers.mainThread())
@@ -95,25 +108,16 @@ class RegistExecuteViewModel(val database: AppDatabase): ViewModel()
 	{
 		val host = host ?: return
 		val assignManualHostId = assignManualHostId
-		val dao = database.registeredHostDao()
-		val manualHostDao = database.manualHostDao()
-		val registeredHost = RegisteredHost(host)
-		dao.deleteByMac(registeredHost.serverMac)
-			.andThen(dao.insert(registeredHost))
-			.let {
-				if(assignManualHostId != null)
-					it.flatMapCompletable { registeredHostId ->
-						manualHostDao.assignRegisteredHost(assignManualHostId, registeredHostId)
-					}
-				else
-					it.ignoreElement()
-			}
+		Single.fromCallable { database.saveRegisteredHost(RegisteredHost(host), assignManualHostId) }
 			.subscribeOn(Schedulers.io())
 			.observeOn(AndroidSchedulers.mainThread())
-			.subscribe {
+			.subscribe({
 				Log.i("RegistExecute", "Registered Host saved in db")
 				_state.value = State.SUCCESSFUL
-			}
+			}, {
+				Log.e("RegistExecute", "Failed to save Registered Host", it)
+				_state.value = State.FAILED
+			})
 			.addTo(disposable)
 	}
 

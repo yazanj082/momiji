@@ -8,6 +8,8 @@
     android:gravity="center_vertical"
     android:paddingEnd="?android:attr/scrollbarSize"
     android:background="?android:attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true"
     android:paddingTop="8dp"
     android:paddingBottom="8dp">
 
@@ -33,6 +35,9 @@
         android:ellipsize="marquee"
         android:fadingEdge="horizontal"
         app:layout_constraintStart_toEndOf="@id/iconImageView"
+        app:layout_constraintEnd_toStartOf="@id/optionsImageView"
+        app:layout_constraintHorizontal_bias="0"
+        app:layout_constrainedWidth="true"
         app:layout_constraintTop_toTopOf="parent"
         android:layout_marginStart="32dp"
         tools:text="Name" />
@@ -49,5 +54,19 @@
         app:layout_constraintTop_toBottomOf="@id/nameTextView"
         app:layout_constraintBottom_toBottomOf="parent"
         tools:text="Summary"/>
+
+    <!-- Shows that the row has options; the row itself handles the click -->
+    <ImageView
+        android:id="@+id/optionsImageView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:src="@drawable/ic_more_vert"
+        app:tint="?android:attr/textColorSecondary"
+        android:importantForAccessibility="no"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
