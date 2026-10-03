@@ -1,0 +1,1 @@
+Your console keys now stay on your device: Android's cloud backup and transfer to a new device no longer copy them. To move them, export the settings. The privacy policy now also mentions that on devices without a browser, Sony's sign-in page opens inside Momiji.

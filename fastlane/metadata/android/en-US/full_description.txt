@@ -2,7 +2,7 @@ Momiji streams games from your PS5 or PS4 to your Android phone, tablet, TV box 
 
 <b>Easy to set up</b>
 • Finds the consoles on your network and wakes them up from rest mode.
-• Registration in three explained steps. Sign in with Sony in your browser, and Momiji fills in your Account ID for you. Passkeys work too.
+• Registration in three explained steps. Sign in with Sony in your browser (or inside Momiji on devices without one), and Momiji fills in your Account ID for you. Passkeys work too.
 
 <b>Play with a real controller</b>
 • DualSense, DualShock 4, Xbox and other controllers, with rumble.

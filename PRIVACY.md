@@ -6,13 +6,13 @@ Momiji doesn't collect, sell or share any personal data. It has no ads, analytic
 
 ## What stays on your device
 
-- **Your consoles**: to connect, Momiji finds consoles on your local network and stores their names, addresses and the keys from registering them. These stay on your device.
+- **Your consoles**: to connect, Momiji finds consoles on your local network and stores their names, addresses and the keys from registering them. These stay on your device. Momiji turns off Android's cloud backup and device-to-device transfer for them; to move them to another device, export the settings yourself.
 - **Streaming**: video, sound and controller input go directly between your device and your console.
 - **Settings and logs**: your settings and the logs of recent sessions are stored on your device. A log only leaves your device if you share it yourself. Exported settings contain your console keys, so keep those files private.
 
 ## Signing in with Sony
 
-To register a console, you can sign in with Sony to find your PSN Account ID. You sign in on Sony's own page in your browser, so Momiji never sees your password. Momiji then asks Sony for your Account ID, fills it into the registration form and uses it only to register your console. It doesn't keep the Account ID or the sign-in afterwards. Sony's own privacy policy applies to its sign-in.
+To register a console, you can sign in with Sony to find your PSN Account ID. You sign in on Sony's own page in your browser, so Momiji never sees your password. On devices without a browser that supports this, such as some TV boxes, Sony's page opens inside Momiji instead. Momiji doesn't read what you type there; it only takes the sign-in code from the address of the page Sony ends on. Momiji then asks Sony for your Account ID, fills it into the registration form and uses it only to register your console. It doesn't keep the Account ID or the sign-in afterwards. Sony's own privacy policy applies to its sign-in.
 
 ## Links
 
