@@ -347,6 +347,14 @@ class MainActivity : AppCompatActivity()
 	private fun wakeupAndConnect(host: DiscoveredDisplayHost)
 	{
 		stopWakeupConnect()
+		// The console may be awake already, for example when it was turned on while the standby dialog
+		// was open. Discovery only reports changes, so waiting for one would last until the timeout.
+		val current = viewModel.displayHosts.value?.firstOrNull { it is DiscoveredDisplayHost && it.id == host.id }
+		if(current is DiscoveredDisplayHost && current.discoveredHost.state == DiscoveryHost.State.READY)
+		{
+			hostTriggered(current)
+			return
+		}
 		viewModel.discoveryManager.active = true
 		wakeupHost(host)
 		wakeupConnectHost = host
