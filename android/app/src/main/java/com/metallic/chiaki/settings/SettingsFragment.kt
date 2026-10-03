@@ -6,6 +6,7 @@ import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.res.Resources
+import android.os.Build
 import android.os.Bundle
 import android.net.Uri
 import android.provider.Settings
@@ -173,6 +174,38 @@ class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 			it.isVisible = supportUrl.isNotEmpty()
 			it.intent = Intent(Intent.ACTION_VIEW, Uri.parse(supportUrl))
 		}
+		preferenceScreen.findPreference<Preference>("about_feedback")?.setOnPreferenceClickListener { sendFeedback(); true }
+	}
+
+	/** An email with the app version and the device filled in, as those matter for most problems */
+	private fun sendFeedback()
+	{
+		val email = getString(R.string.feedback_email)
+		val subject = getString(R.string.feedback_subject, BuildConfig.VERSION_NAME)
+		val body = getString(R.string.feedback_body, BuildConfig.VERSION_NAME, BuildConfig.FLAVOR,
+			"${Build.MANUFACTURER} ${Build.MODEL}", Build.VERSION.RELEASE, Build.VERSION.SDK_INT)
+		// Some mail apps only read the mailto address, others only the extras
+		val uri = Uri.parse("mailto:$email?subject=${Uri.encode(subject)}&body=${Uri.encode(body)}")
+		val intent = Intent(Intent.ACTION_SENDTO, uri).apply {
+			putExtra(Intent.EXTRA_EMAIL, arrayOf(email))
+			putExtra(Intent.EXTRA_SUBJECT, subject)
+			putExtra(Intent.EXTRA_TEXT, body)
+		}
+		// TVs rarely have a usable email app, and Android TV's placeholder for one does nothing
+		if(!Preferences(requireContext()).isTv)
+		{
+			try
+			{
+				startActivity(intent)
+				return
+			}
+			catch(e: ActivityNotFoundException) {}
+		}
+		MaterialAlertDialogBuilder(requireContext())
+			.setTitle(R.string.preferences_about_feedback_title)
+			.setMessage(getString(R.string.feedback_no_email_app, email, getString(R.string.issues_url)))
+			.setPositiveButton(android.R.string.ok, null)
+			.show()
 	}
 
 	override fun onDestroy()

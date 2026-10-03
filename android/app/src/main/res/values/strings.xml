@@ -155,6 +155,13 @@
     <string name="preferences_button_haptic_enabled_title">Touch Haptics</string>
     <string name="preferences_button_haptic_enabled_summary">Use phone vibration motor for short haptic feedback on button touches</string>
     <string name="action_rest_mode">Put in rest mode</string>
+    <string name="feedback_email">momiji.yallav@gmail.com</string>
+    <string name="issues_url">https://github.com/yazanj082/momiji/issues</string>
+    <string name="preferences_about_feedback_title">Send feedback</string>
+    <string name="preferences_about_feedback_summary">Report a problem or suggest an idea by email</string>
+    <string name="feedback_subject">Momiji %s feedback</string>
+    <string name="feedback_body">\n\n\n---\nMomiji %1$s (%2$s)\nDevice: %3$s\nAndroid %4$s (API %5$d)</string>
+    <string name="feedback_no_email_app">Send your feedback by email to %1$s, or open an issue at %2$s. Thank you!</string>
     <string name="rest_mode_running">Putting %s in rest mode…</string>
     <string name="rest_mode_done">%s is going into rest mode</string>
     <string name="rest_mode_failed">Couldn\'t put %s in rest mode. Make sure it\'s on and on the same network as this device.</string>
