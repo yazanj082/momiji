@@ -344,6 +344,9 @@ typedef struct session_t
     NotificationQueue* ws_notification_queue;
     bool ws_thread_should_stop;
     bool ws_open;
+    bool ws_thread_started;
+    /** Protected by state_mutex, signaled with state_cond */
+    bool ws_thread_exited;
 
     bool main_should_stop;
 
@@ -730,6 +733,8 @@ CHIAKI_EXPORT Session* chiaki_holepunch_session_init(
     session->local_candidates = NULL;
     session->our_offer_msg = NULL;
     session->ws_open = false;
+    session->ws_thread_started = false;
+    session->ws_thread_exited = false;
     session->online_id = NULL;
     memset(&session->session_id, 0, sizeof(session->session_id));
     memset(&session->console_uid, 0, sizeof(session->console_uid));
@@ -887,12 +892,20 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_holepunch_session_create(Session* session)
     err = chiaki_thread_create(&session->ws_thread, websocket_thread_func, session);
     if (err != CHIAKI_ERR_SUCCESS)
         return err;
+    session->ws_thread_started = true;
     chiaki_thread_set_name(&session->ws_thread, "Chiaki Holepunch WS");
     CHIAKI_LOGV(session->log, "chiaki_holepunch_session_create: Created websocket thread");
 
     chiaki_mutex_lock(&session->state_mutex);
     while (!(session->state & SESSION_STATE_WS_OPEN))
     {
+        // The thread ends without opening the websocket when connecting to it fails
+        if (session->ws_thread_exited)
+        {
+            chiaki_mutex_unlock(&session->state_mutex);
+            CHIAKI_LOGE(session->log, "chiaki_holepunch_session_create: Websocket couldn't be opened");
+            return CHIAKI_ERR_NETWORK;
+        }
         CHIAKI_LOGV(session->log, "chiaki_holepunch_session_create: Waiting for websocket to open...");
         err = chiaki_cond_wait(&session->state_cond, &session->state_mutex);
         assert(err == CHIAKI_ERR_SUCCESS);
@@ -1731,6 +1744,10 @@ CHIAKI_EXPORT void chiaki_holepunch_session_fini(Session* session)
             }
             clear_notification(session, notif);
         }
+    }
+    // Also when the websocket never opened or closed early, as the thread may still be running
+    if(session->ws_thread_started)
+    {
         chiaki_mutex_lock(&session->stop_mutex);
         session->ws_thread_should_stop = true;
         chiaki_mutex_unlock(&session->stop_mutex);
@@ -1791,7 +1808,10 @@ CHIAKI_EXPORT void chiaki_holepunch_session_fini(Session* session)
     chiaki_mutex_fini(&session->notif_mutex);
     chiaki_cond_fini(&session->notif_cond);
     chiaki_mutex_fini(&session->state_mutex);
+    chiaki_mutex_fini(&session->stop_mutex);
     chiaki_cond_fini(&session->state_cond);
+    free(session->ws_notification_queue);
+    free(session);
 }
 
 CHIAKI_EXPORT void chiaki_holepunch_main_thread_cancel(Session *session, bool stop_thread)
@@ -2275,6 +2295,10 @@ cleanup_json:
 cleanup:
     curl_easy_cleanup(curl);
     session->ws_open = false;
+    chiaki_mutex_lock(&session->state_mutex);
+    session->ws_thread_exited = true;
+    chiaki_mutex_unlock(&session->state_mutex);
+    chiaki_cond_signal(&session->state_cond);
 
     return NULL;
 }
