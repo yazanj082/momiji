@@ -864,7 +864,12 @@ static ChiakiErrorCode session_thread_request_session(ChiakiSession *session, Ch
 		{
 			CHIAKI_LOGE(session->log, "Session request connect failed eventually.");
 			if(session->quit_reason == CHIAKI_QUIT_REASON_NONE)
+			{
 				session->quit_reason = CHIAKI_QUIT_REASON_SESSION_REQUEST_UNKNOWN;
+				// Tells this apart from the console turning the session down
+				free(session->quit_reason_str);
+				session->quit_reason_str = strdup("unreachable");
+			}
 			return CHIAKI_ERR_NETWORK;
 		}
 		else
@@ -1065,6 +1070,13 @@ static ChiakiErrorCode session_thread_request_session(ChiakiSession *session, Ch
 				break;
 			default:
 				session->quit_reason = CHIAKI_QUIT_REASON_SESSION_REQUEST_UNKNOWN;
+				{
+					// The code tells apart reasons such as Remote Play being off for the user
+					char reason_str[32];
+					snprintf(reason_str, sizeof(reason_str), "%#x", (unsigned int)response.error_code);
+					free(session->quit_reason_str);
+					session->quit_reason_str = strdup(reason_str);
+				}
 				break;
 		}
 	}

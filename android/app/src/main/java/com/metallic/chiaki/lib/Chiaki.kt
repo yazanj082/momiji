@@ -340,7 +340,23 @@ class QuitReason(val value: Int)
 	val isError = ChiakiNative.quitReasonIsError(value)
 
 	/** The console is in another Remote Play session, which it still is for some seconds after one ended */
-	val isRpInUse get() = value == 4 // CHIAKI_QUIT_REASON_SESSION_REQUEST_RP_IN_USE
+	val isRpInUse get() = value == SESSION_REQUEST_RP_IN_USE
+
+	companion object
+	{
+		// ChiakiQuitReason
+		const val SESSION_REQUEST_UNKNOWN = 2
+		const val SESSION_REQUEST_CONNECTION_REFUSED = 3
+		const val SESSION_REQUEST_RP_IN_USE = 4
+		const val SESSION_REQUEST_RP_CRASH = 5
+		const val SESSION_REQUEST_RP_VERSION_MISMATCH = 6
+		const val CTRL_UNKNOWN = 7
+		const val CTRL_CONNECT_FAILED = 8
+		const val CTRL_CONNECTION_REFUSED = 9
+		const val STREAM_CONNECTION_UNKNOWN = 10
+		const val STREAM_CONNECTION_REMOTE_DISCONNECTED = 11
+		const val PSN_REGIST_FAILED = 13
+	}
 }
 
 sealed class Event

@@ -339,7 +339,7 @@ class StreamSession(val connectInfo: ConnectInfo, val logManager: LogManager, va
 				_state.value = StreamStateConnected
 			}
 			// A session that just ended may still count as in use on the console for a moment
-			is QuitEvent -> if(event.reason.value == QUIT_REASON_RP_IN_USE && inUseRetries < IN_USE_RETRIES_MAX)
+			is QuitEvent -> if(event.reason.isRpInUse && inUseRetries < IN_USE_RETRIES_MAX)
 				postWhileRunning {
 					inUseRetries++
 					Log.i("StreamSession", "Console still in use, retry $inUseRetries in ${IN_USE_RETRY_DELAY_MS}ms")
@@ -466,8 +466,6 @@ class StreamSession(val connectInfo: ConnectInfo, val logManager: LogManager, va
 	{
 		private const val TAG = "StreamSession"
 		private const val HAPTICS_TIMEOUT_MS = 100L
-		// CHIAKI_QUIT_REASON_SESSION_REQUEST_RP_IN_USE
-		private const val QUIT_REASON_RP_IN_USE = 4
 		private const val IN_USE_RETRIES_MAX = 5
 		private const val IN_USE_RETRY_DELAY_MS = 2000L
 	}

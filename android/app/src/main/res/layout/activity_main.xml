@@ -112,6 +112,13 @@
             android:text="@string/preferences_internet_play_title"
             android:visibility="gone"
             app:icon="@drawable/ic_web" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/emptyHelpButton"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/help_not_found_action" />
     </LinearLayout>
 
     <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton

@@ -2,7 +2,6 @@
     <string name="app_name" translatable="false">Momiji</string>
     <string name="title_settings">Settings</string>
     <string name="alert_message_standby_wakeup">The console is in rest mode. Wake it up and connect as soon as it\'s ready, instead of connecting right away?</string>
-    <string name="alert_message_session_quit">Session has quit: %s</string>
     <string name="alert_message_session_create_error">Failed to create Session: %s</string>
     <string name="alert_message_login_pin_request">Login PIN:</string>
     <string name="alert_message_login_pin_request_incorrect">Entered PIN was incorrect!\nLogin PIN:</string>
@@ -351,4 +350,31 @@
     <string name="preferences_bitrate_key" translatable="false">stream_bitrate</string>
     <string name="preferences_codec_key" translatable="false">stream_codec</string>
     <string name="preferences_debanding_key" translatable="false">stream_debanding</string>
+
+    <!-- Why a console can't be found or a stream ended -->
+    <string name="help_title_console_busy">The console is busy</string>
+    <string name="help_title_couldnt_connect">Couldn\'t connect</string>
+    <string name="help_title_stream_ended">The stream ended</string>
+    <string name="help_unreachable">Momiji couldn\'t reach the console. Check that it is on or in rest mode, on the same network as this device, and that no VPN is on.</string>
+    <string name="help_rp_in_use">Remote Play is in use on the console, from another device or a session that hasn\'t finished closing. End the other session or wait a moment, then reconnect.</string>
+    <string name="help_rp_crash">Remote Play stopped working on the console. Restart the console, then reconnect.</string>
+    <string name="help_rp_version">The console\'s Remote Play version isn\'t one Momiji knows. Update the console\'s system software, then reconnect.</string>
+    <string name="help_refused">The console turned the connection down. Check that Remote Play is on. A console that is just waking up can need a few more seconds.</string>
+    <string name="help_not_allowed">Remote Play isn\'t allowed for the account the console was registered with. On the console, turn on Remote Play while signed in to that account, or register again with the account you play on: Change PSN account, in the console\'s menu.</string>
+    <string name="help_register_again">The console doesn\'t accept this registration anymore. Register it again: Change PSN account, in the console\'s menu.</string>
+    <string name="help_request_unknown">The console didn\'t accept the connection. Check that Remote Play is on and that the console\'s system software is up to date, then reconnect.</string>
+    <string name="help_network">The connection to the console broke off while starting. Check that this device and the console are on the same network, that no VPN is on, and that the Wi-Fi isn\'t a guest network that keeps devices apart.</string>
+    <string name="help_weak_network">The stream couldn\'t keep up, probably because the network is too weak. Move closer to the router, use 5 GHz Wi-Fi or a cable for the console, or choose Smooth quality.</string>
+    <string name="help_console_ended">The console ended the stream. It may have gone into rest mode or been turned off, or someone else used it.</string>
+    <string name="help_psn_regist">Your console didn\'t accept the connection through PlayStation Network. Check that the console is signed in to PlayStation Network with the account you signed in with here, and that Remote Play is on.</string>
+    <string name="help_unknown">Something went wrong. Reconnect, and if it keeps happening, restart the console.</string>
+    <string name="help_details">Details: %s</string>
+    <string name="help_not_found_title">Can\'t find your console?</string>
+    <string name="help_not_found_action">Console not found?</string>
+    <string name="help_not_found_on">Turn the console on, or put it in rest mode with \"Stay connected to the internet\" on.</string>
+    <string name="help_not_found_network">Connect this device to the same network as the console. Guest Wi-Fi networks often keep devices apart.</string>
+    <string name="help_not_found_vpn">Turn off any VPN on this device, or allow local network connections in it.</string>
+    <string name="help_not_found_remote_play">Turn on Remote Play on the console: on a PS5 in Settings > System > Remote Play, on a PS4 in Settings > Remote Play Connection Settings.</string>
+    <string name="help_not_found_ip">Still not found? Add the console by its IP address, which it shows in Settings > Network > Connection Status.</string>
+    <string name="help_not_found_away">Away from home? Sign in to PlayStation Network in Settings > Play away from home.</string>
 </resources>

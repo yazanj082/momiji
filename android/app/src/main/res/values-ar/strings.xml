@@ -2,7 +2,6 @@
 <resources>
     <string name="title_settings">الإعدادات</string>
     <string name="alert_message_standby_wakeup">جهاز الألعاب في وضع الراحة. هل تريد تشغيله والاتصال به فور جاهزيته، بدلًا من الاتصال الآن؟</string>
-    <string name="alert_message_session_quit">انتهت الجلسة: %s</string>
     <string name="alert_message_session_create_error">تعذّر إنشاء الجلسة: %s</string>
     <string name="alert_message_login_pin_request">رمز PIN لتسجيل الدخول:</string>
     <string name="alert_message_login_pin_request_incorrect">رمز PIN الذي أدخلته غير صحيح!\nرمز PIN لتسجيل الدخول:</string>
@@ -314,4 +313,31 @@
     <string name="preferences_about_source_title">الشيفرة المصدرية</string>
     <string name="preferences_about_credits_title">مبني على Chiaki</string>
     <string name="preferences_about_credits_summary">مبني على Chiaki من Florian Märkl، وchiaki-ng من Street Pea، ونسخة Android من SalamiTheMan، مع جميع المساهمين فيها. تطبيق Momiji غير تابع لشركة Sony Interactive Entertainment.</string>
+
+    <!-- Why a console can't be found or a stream ended -->
+    <string name="help_title_console_busy">جهاز الألعاب مشغول</string>
+    <string name="help_title_couldnt_connect">تعذّر الاتصال</string>
+    <string name="help_title_stream_ended">انتهى البث</string>
+    <string name="help_unreachable">تعذّر على Momiji الوصول إلى جهاز الألعاب. تأكد من أنه يعمل أو في وضع الراحة، وعلى الشبكة نفسها التي عليها هذا الجهاز، ومن عدم تشغيل VPN.</string>
+    <string name="help_rp_in_use">اللعب عن بُعد قيد الاستخدام على جهاز الألعاب، من جهاز آخر أو من جلسة لم تُغلق بعد. أنهِ الجلسة الأخرى أو انتظر قليلًا، ثم أعد الاتصال.</string>
+    <string name="help_rp_crash">توقف اللعب عن بُعد عن العمل على جهاز الألعاب. أعد تشغيل جهاز الألعاب، ثم أعد الاتصال.</string>
+    <string name="help_rp_version">إصدار اللعب عن بُعد على جهاز الألعاب غير معروف لتطبيق Momiji. حدّث برنامج نظام جهاز الألعاب، ثم أعد الاتصال.</string>
+    <string name="help_refused">رفض جهاز الألعاب الاتصال. تأكد من أن اللعب عن بُعد مفعّل. وقد يحتاج جهاز الألعاب الذي يستيقظ للتو إلى بضع ثوانٍ أخرى.</string>
+    <string name="help_not_allowed">اللعب عن بُعد غير مسموح للحساب الذي سُجّل به جهاز الألعاب. على جهاز الألعاب، فعّل اللعب عن بُعد وأنت مسجّل الدخول بذلك الحساب، أو سجّل مجددًا بالحساب الذي تلعب به: «تغيير حساب PSN» في قائمة جهاز الألعاب.</string>
+    <string name="help_register_again">لم يعد جهاز الألعاب يقبل هذا التسجيل. سجّله مجددًا: «تغيير حساب PSN» في قائمة جهاز الألعاب.</string>
+    <string name="help_request_unknown">لم يقبل جهاز الألعاب الاتصال. تأكد من أن اللعب عن بُعد مفعّل ومن أن برنامج نظام جهاز الألعاب محدّث، ثم أعد الاتصال.</string>
+    <string name="help_network">انقطع الاتصال بجهاز الألعاب أثناء البدء. تأكد من أن هذا الجهاز وجهاز الألعاب على الشبكة نفسها، ومن عدم تشغيل VPN، ومن أن شبكة Wi-Fi ليست شبكة ضيوف تفصل الأجهزة عن بعضها.</string>
+    <string name="help_weak_network">لم يستطع البث المواصلة، والأرجح أن الشبكة ضعيفة جدًا. اقترب من الراوتر، أو استخدم شبكة Wi-Fi بتردد 5 GHz أو كابلًا لجهاز الألعاب، أو اختر الجودة «سلسة».</string>
+    <string name="help_console_ended">أنهى جهاز الألعاب البث. ربما دخل في وضع الراحة أو أُطفئ، أو استخدمه شخص آخر.</string>
+    <string name="help_psn_regist">لم يقبل جهاز الألعاب الاتصال عبر PlayStation Network. تأكد من أن جهاز الألعاب مسجّل الدخول إلى PlayStation Network بالحساب نفسه الذي سجّلت به الدخول هنا، ومن أن اللعب عن بُعد مفعّل.</string>
+    <string name="help_unknown">حدث خطأ. أعد الاتصال، وإن تكرر ذلك فأعد تشغيل جهاز الألعاب.</string>
+    <string name="help_details">التفاصيل: %s</string>
+    <string name="help_not_found_title">لا تجد جهاز الألعاب؟</string>
+    <string name="help_not_found_action">لم يُعثر على جهاز الألعاب؟</string>
+    <string name="help_not_found_on">شغّل جهاز الألعاب، أو ضعه في وضع الراحة مع تفعيل «البقاء متصلًا بالإنترنت».</string>
+    <string name="help_not_found_network">صِل هذا الجهاز بالشبكة نفسها التي عليها جهاز الألعاب. فشبكات Wi-Fi للضيوف كثيرًا ما تفصل الأجهزة عن بعضها.</string>
+    <string name="help_not_found_vpn">أوقف أي VPN على هذا الجهاز، أو اسمح فيه باتصالات الشبكة المحلية.</string>
+    <string name="help_not_found_remote_play">فعّل اللعب عن بُعد على جهاز الألعاب: على PS5 من الإعدادات ← النظام ← اللعب عن بُعد، وعلى PS4 من الإعدادات ← إعدادات اتصال اللعب عن بُعد.</string>
+    <string name="help_not_found_ip">ألم يظهر بعد؟ أضف جهاز الألعاب بعنوان IP الخاص به، الذي يظهر على جهاز الألعاب في الإعدادات ← الشبكة ← حالة الاتصال.</string>
+    <string name="help_not_found_away">خارج المنزل؟ سجّل الدخول إلى PlayStation Network من الإعدادات ← اللعب خارج المنزل.</string>
 </resources>

@@ -93,6 +93,7 @@ class MainActivity : AppCompatActivity()
 		binding.floatingActionButton.setOnClickListener { showAddConsoleSheet() }
 		binding.emptyDiscoverButton.setOnClickListener { viewModel.discoveryManager.active = true }
 		binding.emptyInternetPlayButton.setOnClickListener { startActivity(SettingsActivity.internetPlayIntent(this)) }
+		binding.emptyHelpButton.setOnClickListener { ConnectionHelp.showConsoleNotFound(this) }
 
 		viewModel = ViewModelProvider(this, viewModelFactory {
 			MainViewModel(getDatabase(this), Preferences(this), PsnAccount(this), getString(R.string.display_host_main_ps4))
@@ -458,6 +459,7 @@ class MainActivity : AppCompatActivity()
 		MaterialAlertDialogBuilder(this)
 			.setMessage(message)
 			.setPositiveButton(android.R.string.ok, null)
+			.setNeutralButton(R.string.help_not_found_action) { _, _ -> ConnectionHelp.showConsoleNotFound(this) }
 			.show()
 	}
 

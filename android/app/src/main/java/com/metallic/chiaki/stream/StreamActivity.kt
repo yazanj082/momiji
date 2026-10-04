@@ -13,6 +13,9 @@ import android.graphics.Matrix
 import android.hardware.input.InputManager
 import android.net.wifi.WifiManager
 import android.os.*
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.RelativeSizeSpan
 import android.util.Rational
 import android.view.*
 import android.widget.EditText
@@ -26,6 +29,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.*
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.metallic.chiaki.R
+import com.metallic.chiaki.common.ConnectionHelp
 import com.metallic.chiaki.common.ControllerProfiles
 import com.metallic.chiaki.common.Preferences
 import com.metallic.chiaki.common.isDesktopMode
@@ -683,10 +687,16 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 					if(state.reason.isError)
 					{
 						dialog?.dismiss()
-						val reasonStr = state.reasonString
+						val explanation = ConnectionHelp.explain(state.reason, state.reasonString,
+							viewModel.session.connectInfo.psnConsoleUid != null)
+						// What the library said, smaller, for reports
+						val details = getString(R.string.help_details, state.reason.toString() + (state.reasonString?.let { " ($it)" } ?: ""))
+						val message = SpannableStringBuilder(getString(explanation.message))
+							.append("\n\n")
+							.append(details, RelativeSizeSpan(0.85f), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
 						val dialog = MaterialAlertDialogBuilder(this)
-							.setMessage(getString(R.string.alert_message_session_quit, state.reason.toString())
-									+ (if(reasonStr != null) "\n$reasonStr" else ""))
+							.setTitle(explanation.title)
+							.setMessage(message)
 							.setPositiveButton(R.string.action_reconnect) { _, _ ->
 								dialog = null
 								// So that the dialog shows again if the new connection quits as well
