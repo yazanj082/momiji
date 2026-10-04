@@ -200,6 +200,8 @@
     <string name="preferences_bitrate_auto">Auto (%d)</string>
     <string name="preferences_codec_title_h264" translatable="false">H264</string>
     <string name="preferences_codec_title_h265">H265 (PS5 only)</string>
+    <string name="preferences_pip_title">Picture-in-picture</string>
+    <string name="preferences_pip_summary">When you leave the app, the stream goes on in a small window. Closing it ends the stream.</string>
     <string name="preferences_quality_title">Quality</string>
     <string name="quality_summary">%1$s: %2$s</string>
     <string name="quality_smooth">Smooth</string>

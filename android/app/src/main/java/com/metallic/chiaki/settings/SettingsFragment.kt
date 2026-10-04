@@ -5,6 +5,7 @@ package com.metallic.chiaki.settings
 import android.app.Activity
 import android.app.StatusBarManager
 import android.content.ComponentName
+import android.content.pm.PackageManager
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.res.Resources
@@ -45,6 +46,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 		preferences.buttonHapticEnabledKey -> preferences.buttonHapticEnabled
 		preferences.debandingEnabledKey -> preferences.debandingEnabled
 		preferences.touchscreenTouchpadEnabledKey -> preferences.touchscreenTouchpadEnabled
+		preferences.pictureInPictureKey -> preferences.pictureInPicture
 		else -> defValue
 	}
 
@@ -60,6 +62,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 			preferences.buttonHapticEnabledKey -> preferences.buttonHapticEnabled = value
 			preferences.debandingEnabledKey -> preferences.debandingEnabled = value
 			preferences.touchscreenTouchpadEnabledKey -> preferences.touchscreenTouchpadEnabled = value
+			preferences.pictureInPictureKey -> preferences.pictureInPicture = value
 		}
 	}
 
@@ -194,6 +197,9 @@ class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 			it.intent = Intent(Intent.ACTION_VIEW, Uri.parse(supportUrl))
 		}
 		preferenceScreen.findPreference<Preference>("about_feedback")?.setOnPreferenceClickListener { sendFeedback(); true }
+
+		preferenceScreen.findPreference<Preference>(preferences.pictureInPictureKey)?.isVisible =
+			Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && context.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
 
 		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !preferences.isTv)
 			preferenceScreen.findPreference<Preference>("quick_settings_tile")?.let {

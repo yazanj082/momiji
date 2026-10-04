@@ -154,6 +154,12 @@ class Preferences(context: Context)
 		get() = sharedPreferences.getBoolean(touchscreenTouchpadEnabledKey, false)
 		set(value) { sharedPreferences.edit().putBoolean(touchscreenTouchpadEnabledKey, value).apply() }
 
+	/** Whether leaving the app keeps the stream in a small window. TV launchers handle it poorly. */
+	val pictureInPictureKey get() = "stream_picture_in_picture"
+	var pictureInPicture
+		get() = sharedPreferences.getBoolean(pictureInPictureKey, !isTv)
+		set(value) { sharedPreferences.edit().putBoolean(pictureInPictureKey, value).apply() }
+
 	val streamStatsEnabledKey get() = "stream_stats_enabled"
 	var streamStatsEnabled
 		get() = sharedPreferences.getBoolean(streamStatsEnabledKey, false)

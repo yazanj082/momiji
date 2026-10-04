@@ -123,6 +123,14 @@
             app:title="@string/preferences_bitrate_title"
             app:icon="@drawable/ic_bitrate"/>
 
+        <!-- Shown where the device has picture-in-picture -->
+        <SwitchPreference
+            app:key="stream_picture_in_picture"
+            app:title="@string/preferences_pip_title"
+            app:summary="@string/preferences_pip_summary"
+            app:icon="@drawable/ic_display_normal"
+            app:isPreferenceVisible="false" />
+
         <ListPreference
             app:key="@string/preferences_codec_key"
             app:title="@string/preferences_codec_title"

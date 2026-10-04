@@ -187,6 +187,8 @@
     <string name="preferences_log_verbose_summary">تحذير: يسجّل هذا الكثير جدًا! لا تفعّله في الاستخدام العادي.</string>
     <string name="preferences_bitrate_auto">تلقائي (%d)</string>
     <string name="preferences_codec_title_h265">ترميز H265 (لأجهزة PS5 فقط)</string>
+    <string name="preferences_pip_title">صورة داخل صورة</string>
+    <string name="preferences_pip_summary">عند مغادرة التطبيق، يستمر البث في نافذة صغيرة. وإغلاقها يُنهي البث.</string>
     <string name="preferences_quality_title">الجودة</string>
     <string name="quality_summary">%1$s: %2$s</string>
     <string name="quality_smooth">سلسة</string>

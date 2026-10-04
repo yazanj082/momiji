@@ -4,15 +4,21 @@ package com.metallic.chiaki.stream
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
+import android.app.PictureInPictureParams
 import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
+import android.content.res.Configuration
+import android.graphics.Rect
 import android.graphics.Matrix
 import android.hardware.input.InputManager
 import android.net.wifi.WifiManager
 import android.os.*
+import android.util.Rational
 import android.view.*
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
@@ -153,6 +159,8 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		}
 
 		viewModel.session.state.observe(this, Observer { this.stateChanged(it) })
+		// The small window grows out of the picture where it is
+		binding.root.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updatePictureInPictureParams() }
 		viewModel.session.cantDisplay.observe(this, Observer {
 			if(it)
 				Toast.makeText(this, R.string.stream_cant_display, Toast.LENGTH_LONG).show()
@@ -319,6 +327,9 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 	override fun onPause()
 	{
 		super.onPause()
+		// The stream goes on in the small window
+		if(isInPictureInPictureMode)
+			return
 		if (Preferences(this).debandingEnabled) {
 			binding.debandSurfaceView.onPause()
 		}
@@ -330,6 +341,71 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		statsHandler.removeCallbacks(updateStatsRunnable)
 		statsHandler.removeCallbacks(checkBatteryRunnable)
 		viewModel.session.pause()
+	}
+
+	/** Picture-in-picture, where the device has it. In desktop modes the stream is a window already. */
+	private val pictureInPictureSupported by lazy {
+		Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+			&& packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
+			&& !isDesktopMode()
+	}
+
+	/** Only a running stream goes into the small window, not connecting or an error */
+	private fun pictureInPictureWanted() = pictureInPictureSupported && Preferences(this).pictureInPicture
+			&& viewModel.session.state.value == StreamStateConnected
+
+	@RequiresApi(Build.VERSION_CODES.O)
+	private fun pictureInPictureParams(): PictureInPictureParams
+	{
+		val profile = viewModel.session.connectInfo.videoProfile
+		val streamView = if(binding.debandSurfaceView.isVisible) binding.debandSurfaceView else binding.surfaceView
+		val builder = PictureInPictureParams.Builder()
+			.setAspectRatio(Rational(profile.width, profile.height))
+		val sourceRect = Rect()
+		if(streamView.getGlobalVisibleRect(sourceRect))
+			builder.setSourceRectHint(sourceRect)
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+			builder.setAutoEnterEnabled(pictureInPictureWanted())
+				// The picture is video, which a crossfade shows better than a stretch
+				.setSeamlessResizeEnabled(false)
+		return builder.build()
+	}
+
+	private fun updatePictureInPictureParams()
+	{
+		if(pictureInPictureSupported && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+			setPictureInPictureParams(pictureInPictureParams())
+	}
+
+	override fun onUserLeaveHint()
+	{
+		super.onUserLeaveHint()
+		// From Android 12 on, the params enter it by themselves, with a smoother animation
+		if(Build.VERSION.SDK_INT in Build.VERSION_CODES.O until Build.VERSION_CODES.S && pictureInPictureWanted())
+			enterPictureInPictureMode(pictureInPictureParams())
+	}
+
+	override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration)
+	{
+		super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+		// Closing the small window stops the activity first
+		if(!isInPictureInPictureMode && lifecycle.currentState == Lifecycle.State.CREATED)
+		{
+			finish()
+			return
+		}
+		if(isInPictureInPictureMode)
+		{
+			// Only the picture fits in the small window
+			if(dialogContents == StreamMenuDialog)
+				dialog?.dismiss()
+			uiVisibilityHandler.removeCallbacks(hideSystemUIRunnable)
+			binding.overlay.animate().cancel()
+			binding.overlay.isGone = true
+		}
+		binding.statsTextView.isVisible = !isInPictureInPictureMode && Preferences(this).streamStatsEnabled
+		supportFragmentManager.findFragmentById(R.id.controlsFragment)?.view?.isVisible = !isInPictureInPictureMode
+		binding.streamTouchpadView.isVisible = !isInPictureInPictureMode && Preferences(this).touchscreenTouchpadEnabled
 	}
 
 	private val statsHandler = Handler(Looper.getMainLooper())
@@ -582,6 +658,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 	private fun stateChanged(state: StreamState)
 	{
 		binding.progressBar.visibility = if(state == StreamStateConnecting || state is StreamStatePsnConnecting) View.VISIBLE else View.GONE
+		updatePictureInPictureParams()
 		binding.connectingTextView.isVisible = state is StreamStatePsnConnecting
 		if(state is StreamStatePsnConnecting)
 			binding.connectingTextView.setText(when(state.step)

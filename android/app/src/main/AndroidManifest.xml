@@ -82,6 +82,7 @@
             android:taskAffinity=".stream"
             android:theme="@style/StreamTheme"
             android:resizeableActivity="true"
+            android:supportsPictureInPicture="true"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|smallestScreenSize|screenLayout|uiMode">
             <!-- Samsung DeX: open full screen, without the window's title bar -->
             <meta-data android:name="com.samsung.android.dex.launchwidth" android:value="0" />
