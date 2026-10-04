@@ -29,8 +29,8 @@ android {
         applicationId "io.github.yazanj082.momiji"
         minSdk 24
         targetSdk 36
-        versionCode 18
-        versionName "1.0.6"
+        versionCode 19
+        versionName "1.0.7"
         externalNativeBuild {
             cmake {
                 // Reproducible builds: no build machine paths in the native code (e.g. from __FILE__),

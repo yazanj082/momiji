@@ -1,6 +1,6 @@
 # Momiji privacy policy
 
-Effective September 30, 2026
+Effective October 5, 2026
 
 Momiji doesn't collect, sell or share any personal data. It has no ads, analytics or tracking, and no servers of its own.
 

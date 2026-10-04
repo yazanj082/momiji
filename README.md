@@ -6,12 +6,16 @@ Momiji streams games from your PS5 or PS4 to Android phones, tablets, TV boxes a
 
 - **Finds your consoles** on your network and wakes them up from rest mode.
 - **Easy registration**: sign in with Sony in your browser, and Momiji fills in your Account ID. Passkeys work too.
-- **Controllers**: DualSense, DualShock 4, Xbox and other gamepads, with rumble. On-screen controls are hidden while a controller is connected.
-- **DualSense**: touch haptics on the controller's own actuators over USB, gyro and touchpad, plus adaptive triggers and the lightbar where Android gives access to the controller.
-- **Picture**: up to 1080p at 60 fps, H.264 or HEVC, up to 100 Mbps, with an optional debanding filter for smooth gradients.
-- **Low latency**: hardware decoding in low latency mode and the phone's low latency Wi-Fi mode.
+- **Play away from home**: sign in with Sony in Settings → Play away from home, and your consoles connect through PlayStation Network when they aren't on your network.
+- **One tap**: play a console from shortcuts on the app's icon or the home screen, a Quick Settings tile, a widget, or a row on the Android TV home screen.
+- **Controllers**: DualSense, DualShock 4, Xbox and other gamepads, with rumble. Button mapping, stick dead zone and a test for each controller, and its battery level in the stream menu. On-screen controls are hidden while a controller is connected.
+- **DualSense**: touch haptics on the controller's own actuators over USB, gyro and touchpad, plus adaptive triggers where Android gives access to the controller, and the light bar on Android 12 and later.
+- **Picture**: up to 1080p at 60 fps, H.264 or HEVC, up to 100 Mbps. Quality presets (Smooth, Balanced, Sharp), also for each console and for playing away from home, and an optional debanding filter for smooth gradients.
+- **Low latency**: hardware decoding in low latency mode, the display's refresh rate matched to the stream, and the phone's low latency Wi-Fi mode. Optional statistics show the bitrate, packet loss, ping and decoding time.
+- **Picture-in-picture**: leaving the app keeps the stream going in a small window.
 - **TV boxes**: works with a TV remote or controller, and can start right into Momiji. Press **L1 + R1 + Options + Create** together to open the stream menu with just a controller.
 - **Samsung DeX**: the stream fills the whole screen, and its sound plays on the TV even with a DualSense plugged in by USB.
+- **Languages**: English and Arabic. On Android 13 and later, Momiji's language can be set apart from the device's.
 
 ## Getting started
 

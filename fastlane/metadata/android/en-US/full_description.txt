@@ -1,22 +1,31 @@
-Momiji streams games from your PS5 or PS4 to your Android phone, tablet, TV box or Samsung DeX, over your home network. It's free and open source, with no ads or tracking.
+Momiji streams games from your PS5 or PS4 to your Android phone, tablet, TV box or Samsung DeX, at home or away. It's free and open source, with no ads or tracking.
 
 <b>Easy to set up</b>
 • Finds the consoles on your network and wakes them up from rest mode.
 • Registration in three explained steps. Sign in with Sony in your browser (or inside Momiji on devices without one), and Momiji fills in your Account ID for you. Passkeys work too.
 
+<b>Play anywhere</b>
+• Away from home, your consoles connect through PlayStation Network once you sign in with Sony.
+• Play a console in one tap from shortcuts, a Quick Settings tile, a widget or the Android TV home screen.
+• Picture-in-picture keeps the stream going in a small window when you leave the app.
+
 <b>Play with a real controller</b>
 • DualSense, DualShock 4, Xbox and other controllers, with rumble.
-• DualSense touch haptics on the controller's own actuators over USB, plus its gyro and touchpad.
+• Button mapping, stick dead zone and a test for each controller, and its battery level in the stream menu.
+• DualSense touch haptics on the controller's own actuators over USB, its light bar, gyro and touchpad.
 • On-screen controls for touch, hidden while a controller is connected.
 
 <b>Great picture, low latency</b>
 • Up to 1080p at 60 fps, with H.264 or HEVC and up to 100 Mbps.
+• Quality presets: Smooth, Balanced or Sharp, also for each console.
+• Hardware decoding in low latency mode, with the display's refresh rate matched to the stream.
 • An optional filter against color banding in dark scenes.
-• Hardware decoding in low latency mode.
 
 <b>For the living room</b>
 • Works with a TV remote or controller on Android TV boxes, and can start right into Momiji.
 • In Samsung DeX, the stream fills the TV, with its sound on the TV.
+
+In English and Arabic.
 
 Before you start, turn on Remote Play on your console: Settings → System → Remote Play on a PS5, or Settings → Remote Play Connection Settings on a PS4.
 
