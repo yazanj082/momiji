@@ -47,8 +47,9 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		private const val HIDE_UI_TIMEOUT_MS = 2000L
 		private const val STATS_INTERVAL_MS = 1000L
 		private const val BATTERY_CHECK_INTERVAL_MS = 60_000L
-		// Battery levels in percent at which a controller's battery is reported as low, once each
-		private val BATTERY_WARNING_LEVELS = listOf(15, 5)
+		// Battery level in percent at which a controller's battery is reported as low, once,
+		// so that it never interrupts a game more than that
+		private const val BATTERY_WARNING_LEVEL = 10
 	}
 
 	private lateinit var viewModel: StreamViewModel
@@ -550,7 +551,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		return Pair((battery.capacity * 100).roundToInt(), charging)
 	}
 
-	private val batteryWarned = mutableSetOf<Int>()
+	private var batteryWarned = false
 
 	private val checkBatteryRunnable = object: Runnable
 	{
@@ -558,13 +559,12 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		{
 			controllerBattery()?.let { (percent, charging) ->
 				if(charging)
-					batteryWarned.clear()
-				else
-					BATTERY_WARNING_LEVELS.firstOrNull { percent <= it && it !in batteryWarned }?.let { level ->
-						// Lower levels count as warned too, so that a low battery doesn't warn twice at once
-						batteryWarned.addAll(BATTERY_WARNING_LEVELS.filter { it >= level })
-						Toast.makeText(this@StreamActivity, getString(R.string.controller_battery_low, percent), Toast.LENGTH_LONG).show()
-					}
+					batteryWarned = false
+				else if(percent <= BATTERY_WARNING_LEVEL && !batteryWarned)
+				{
+					batteryWarned = true
+					Toast.makeText(this@StreamActivity, getString(R.string.controller_battery_low, percent), Toast.LENGTH_SHORT).show()
+				}
 			}
 			statsHandler.postDelayed(this, BATTERY_CHECK_INTERVAL_MS)
 		}
