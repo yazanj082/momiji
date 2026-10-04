@@ -31,6 +31,7 @@ import com.metallic.chiaki.common.getDatabase
 import com.metallic.chiaki.common.importSettingsFromUri
 import com.metallic.chiaki.shortcut.PlayTileService
 import com.metallic.chiaki.stream.ControllerRumble
+import com.metallic.chiaki.stream.VideoRenderer
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.addTo
 
@@ -45,6 +46,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 		preferences.homeScreenKey -> preferences.homeScreen
 		preferences.buttonHapticEnabledKey -> preferences.buttonHapticEnabled
 		preferences.debandingEnabledKey -> preferences.debandingEnabled
+		preferences.upscalingEnabledKey -> preferences.upscalingEnabled
 		preferences.touchscreenTouchpadEnabledKey -> preferences.touchscreenTouchpadEnabled
 		preferences.pictureInPictureKey -> preferences.pictureInPicture
 		else -> defValue
@@ -61,6 +63,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 			preferences.homeScreenKey -> preferences.homeScreen = value
 			preferences.buttonHapticEnabledKey -> preferences.buttonHapticEnabled = value
 			preferences.debandingEnabledKey -> preferences.debandingEnabled = value
+			preferences.upscalingEnabledKey -> preferences.upscalingEnabled = value
 			preferences.touchscreenTouchpadEnabledKey -> preferences.touchscreenTouchpadEnabled = value
 			preferences.pictureInPictureKey -> preferences.pictureInPicture = value
 		}
@@ -179,6 +182,14 @@ class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 		preferenceScreen.findPreference<ListPreference>(getString(R.string.preferences_codec_key))?.let {
 			it.entryValues = Preferences.codecAll.map { codec -> codec.value }.toTypedArray()
 			it.entries = Preferences.codecAll.map { codec -> getString(codec.title) }.toTypedArray()
+		}
+
+		if(!VideoRenderer.isUpscalingSupported(context))
+		{
+			preferenceScreen.findPreference<Preference>(getString(R.string.preferences_upscaling_key))?.let {
+				it.isEnabled = false
+				it.summary = getString(R.string.preferences_upscaling_unsupported)
+			}
 		}
 
 		val registeredHostsPreference = preferenceScreen.findPreference<Preference>("registered_hosts")

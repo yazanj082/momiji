@@ -144,6 +144,15 @@
             app:summary="@string/preferences_debanding_summary"
             app:defaultValue="false"
             app:icon="@drawable/ic_resolution" />
+
+        <!-- Off by default: drawing through shaders adds delay, and it only helps on screens with more
+             pixels than the stream -->
+        <SwitchPreference
+            app:key="@string/preferences_upscaling_key"
+            app:title="@string/preferences_upscaling_title"
+            app:summary="@string/preferences_upscaling_summary"
+            app:defaultValue="false"
+            app:icon="@drawable/ic_super_resolution" />
     </PreferenceCategory>
 
     <PreferenceCategory

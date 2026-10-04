@@ -23,7 +23,12 @@
     <string name="stream_on_screen_controls">أزرار التحكم على الشاشة</string>
     <string name="action_show_stats">إظهار الإحصاءات</string>
     <string name="action_hide_stats">إخفاء الإحصاءات</string>
+    <string name="action_upscaling_on">تفعيل الدقة الفائقة</string>
+    <string name="action_upscaling_off">إيقاف الدقة الفائقة</string>
     <string name="stream_stats_video">%1$d×%2$d · %3$.0f fps</string>
+    <string name="stream_stats_upscaled">Upscaled to %1$d×%2$d with super resolution</string>
+    <string name="stream_stats_upscaling_not_needed">Super resolution not needed: the screen isn\'t bigger than the stream</string>
+    <string name="stream_stats_upscaling_unsupported">Super resolution doesn\'t work on this device</string>
     <string name="stream_stats_network">%1$.1f Mbit/s · %2$.1f%% lost · ping %3$.0f ms</string>
     <string name="stream_stats_decode">Decoding %1$.1f ms, at most %2$.1f ms</string>
     <string name="stream_menu_hint">اضغط L1 وR1 وOptions وCreate معًا لفتح القائمة</string>
@@ -204,6 +209,9 @@
     <string name="quality_away_title">الجودة خارج المنزل</string>
     <string name="preferences_debanding_title">تدرّجات ألوان ناعمة</string>
     <string name="preferences_debanding_summary">يُخفي تقطّع تدرّجات الألوان في المشاهد المظلمة، لكنه يضيف تأخيرًا بسيطًا</string>
+    <string name="preferences_upscaling_title">الدقة الفائقة</string>
+    <string name="preferences_upscaling_summary">صورة أوضح عندما تكون دقة الشاشة أعلى من دقة البث، مثل بث بدقة 720p على هاتف أو تلفاز 4K، لكنها تضيف تأخيرًا بسيطًا</string>
+    <string name="preferences_upscaling_unsupported">تتطلب OpenGL ES 3.1، وهو غير متوفر في هذا الجهاز</string>
     <string name="preferences_swap_cross_moon_title">تبديل أزرار الأشكال</string>
     <string name="preferences_swap_cross_moon_summary">الإكس مع الدائرة، والمربع مع المثلث، لترتيب أزرار على طريقة Nintendo كما في كثير من وحدات تحكم 8BitDo</string>
     <string name="preferences_controllers_title">وحدات التحكم</string>

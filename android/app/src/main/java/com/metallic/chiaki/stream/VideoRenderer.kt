@@ -2,11 +2,14 @@
 
 package com.metallic.chiaki.stream
 
+import android.app.ActivityManager
+import android.content.Context
 import android.graphics.SurfaceTexture
 import android.opengl.GLES11Ext
 import android.opengl.GLES30
 import android.opengl.GLSurfaceView
 import android.util.Log
+import android.util.Size
 import android.view.Surface
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -14,23 +17,38 @@ import java.nio.FloatBuffer
 import java.util.concurrent.atomic.AtomicInteger
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
-import kotlin.random.Random
 
 /**
- * GLSurfaceView.Renderer that applies debanding shader to video frames.
- * Uses SurfaceTexture to receive frames from MediaCodec and renders them
- * with a GLSL debanding effect.
+ * GLSurfaceView.Renderer that draws the video through shaders: debanding ("Smooth gradients") and super
+ * resolution, which upscales it to the view's size with Snapdragon Game Super Resolution 1 (SGSR).
+ * Frames from MediaCodec arrive in a SurfaceTexture and go through up to three passes:
+ * 1. the decoder's external texture is copied to a texture of the video's size, with the luma in alpha
+ * 2. debanding, at the video's size: to the screen, or to a second texture when upscaling
+ * 3. when upscaling: SGSR to the view's size, or bilinear scaling where the view isn't bigger than the video
+ * Without upscaling, the surface must have the video's size, and the system scales it to the view.
  * Meant to be used with RENDERMODE_WHEN_DIRTY: [requestRender] is called for every new video frame.
  */
-class DebandRenderer(
+class VideoRenderer(
     private val videoWidth: Int,
     private val videoHeight: Int,
+    private val deband: Boolean,
+    private val sharpness: Float,
+    /** Source of SGSR's fragment shader ([UPSCALE_SHADER_ASSET]), or null to not upscale */
+    private val upscaleShader: String?,
     private val requestRender: () -> Unit,
     private val onSurfaceReady: (Surface) -> Unit
 ) : GLSurfaceView.Renderer, SurfaceTexture.OnFrameAvailableListener {
 
     companion object {
-        private const val TAG = "DebandRenderer"
+        private const val TAG = "VideoRenderer"
+
+        /** SGSR's fragment shader in the assets, Qualcomm's with the changes listed in its header */
+        const val UPSCALE_SHADER_ASSET = "sgsr1_shader_mobile_edge_direction.frag"
+
+        /** SGSR needs textureGather, which came with OpenGL ES 3.1 */
+        fun isUpscalingSupported(context: Context) =
+            (context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager)
+                .deviceConfigurationInfo.reqGlEsVersion >= 0x30001
 
         // 1. Copy pass (OES -> FBO)
         private const val COPY_VERTEX_SHADER = """
@@ -45,6 +63,8 @@ class DebandRenderer(
             }
         """
 
+        // The luma goes in alpha, where SGSR looks for edges (its RGBY mode): with only green, as in
+        // its RGBA mode, it would miss edges between colors of the same green, such as red on black
         private const val COPY_FRAGMENT_SHADER = """
             #version 300 es
             #extension GL_OES_EGL_image_external_essl3 : require
@@ -53,11 +73,12 @@ class DebandRenderer(
             out vec4 outColor;
             uniform samplerExternalOES u_Texture;
             void main() {
-                outColor = texture(u_Texture, v_TexCoord);
+                vec3 color = texture(u_Texture, v_TexCoord).rgb;
+                outColor = vec4(color, dot(color, vec3(0.2126, 0.7152, 0.0722)));
             }
         """
 
-        // 2. Effects pass (FBO -> Screen)
+        // 2. Debanding pass (FBO -> screen, or -> FBO before upscaling), and the bilinear scaling
         private const val EFFECT_VERTEX_SHADER = """
             #version 300 es
             in vec4 a_Position;
@@ -70,7 +91,7 @@ class DebandRenderer(
             }
         """
 
-        private const val EFFECT_FRAGMENT_SHADER = """
+        private const val DEBAND_FRAGMENT_SHADER = """
             #version 300 es
             precision highp float;
 
@@ -81,6 +102,8 @@ class DebandRenderer(
             uniform highp float u_Time;
             uniform highp vec2 u_ScreenSize;
             uniform highp float u_Sharpness;
+            // 1 when SGSR comes next and needs the luma in alpha, 0 on the screen
+            uniform float u_LumaInAlpha;
 
             // Stochastic Debanding v2 Parameters
             const float DEBAND_THRESHOLD = 0.02;   // Sensitivity to banding steps (lower = safer for textures)
@@ -104,18 +127,18 @@ class DebandRenderer(
             void main() {
                 highp vec2 texelSize = 1.0 / u_ScreenSize;
                 vec3 original = texture(u_Texture, v_TexCoord).rgb;
-                
+
                 // ═══════════════════════════════════════════════════════════════
                 // STOCHASTIC DEBANDING (libplacebo-inspired)
                 // ═══════════════════════════════════════════════════════════════
-                
+
                 vec3 sum = original;
                 float totalW = 1.0;
-                
+
                 // Use IGN + Time for jittered sampling
                 float noise = ign(v_TexCoord);
                 float timeSeed = fract(u_Time * 0.1);
-                
+
                 // The spiral is rotated per pixel instead of computing sin/cos for every sample:
                 // one rotation by noise * golden angle, then a fixed golden angle step per sample
                 float startAngle = noise * 2.3999632;
@@ -127,24 +150,24 @@ class DebandRenderer(
                     vec2 offset = dir * r * texelSize;
                     dir = vec2(dir.x * goldenStep.x - dir.y * goldenStep.y, dir.x * goldenStep.y + dir.y * goldenStep.x);
                     vec3 s = texture(u_Texture, clamp(v_TexCoord + offset, 0.0, 1.0)).rgb;
-                    
+
                     // Difference check: only average pixels that could be part of the same gradient
                     float diff = max(max(abs(original.r - s.r), abs(original.g - s.g)), abs(original.b - s.b));
-                    
-                    // Soft threshold: skip edges, keep gradients. 
+
+                    // Soft threshold: skip edges, keep gradients.
                     // Lower threshold means we only blend very similar colors.
                     float w = 1.0 - smoothstep(0.0, DEBAND_THRESHOLD, diff);
                     sum += s * w;
                     totalW += w;
                 }
-                
+
                 vec3 debanded = sum / totalW;
                 vec3 color = debanded;
 
                 // ═══════════════════════════════════════════════════════════════
                 // RCAS (Robust Contrast Adaptive Sharpening)
                 // ═══════════════════════════════════════════════════════════════
-                
+
                 if (u_Sharpness > 0.0) {
                     // Sample neighbors from the original texture for better edge detection
                     vec3 b = texture(u_Texture, v_TexCoord + vec2(0.0, -texelSize.y)).rgb;
@@ -155,15 +178,15 @@ class DebandRenderer(
                     // Increased peak for more "bite"
                     float peak = -1.0 / mix(8.0, 4.0, u_Sharpness);
                     vec3 e = color;
-                    
+
                     vec3 minRGB = min(min(min(min(b, d), f), h), e);
                     vec3 maxRGB = max(max(max(max(b, d), f), h), e);
-                    
+
                     // Reduced contrast protection (0.01 instead of 0.03) to sharpen darker details better
                     vec3 amp = clamp((min(minRGB, 1.0 - maxRGB) - 0.01) / max(maxRGB, 0.01), 0.0, 1.0);
                     amp = sqrt(amp);
-                    float w = peak * amp.r; 
-                    
+                    float w = peak * amp.r;
+
                     color = clamp(((b + d + f + h) * w + e) / (4.0 * w + 1.0), 0.0, 1.0);
                 }
 
@@ -173,7 +196,33 @@ class DebandRenderer(
                 float dither = (ign(v_TexCoord + timeSeed) - 0.5) * 0.005;
                 color += vec3(dither + GRAIN_STRENGTH * (rand(v_TexCoord, timeSeed) - 0.5));
 
-                outColor = vec4(color, 1.0);
+                float luma = dot(clamp(color, 0.0, 1.0), vec3(0.2126, 0.7152, 0.0722));
+                outColor = vec4(color, mix(1.0, luma, u_LumaInAlpha));
+            }
+        """
+
+        // 3. Bilinear scaling to the screen, where SGSR isn't used (FBO -> screen)
+        private const val BLIT_FRAGMENT_SHADER = """
+            #version 300 es
+            precision mediump float;
+            in highp vec2 v_TexCoord;
+            out vec4 outColor;
+            uniform sampler2D u_Texture;
+            void main() {
+                outColor = vec4(texture(u_Texture, v_TexCoord).rgb, 1.0);
+            }
+        """
+
+        // 3. SGSR (FBO -> screen). Its fragment shader is GLSL ES 3.10, and OpenGL ES only links shaders of
+        // the same version
+        private const val UPSCALE_VERTEX_SHADER = """
+            #version 310 es
+            in vec4 a_Position;
+            in vec2 a_TexCoord;
+            out highp vec2 in_TEXCOORD0;
+            void main() {
+                gl_Position = a_Position;
+                in_TEXCOORD0 = a_TexCoord;
             }
         """
 
@@ -189,30 +238,48 @@ class DebandRenderer(
         private const val VERTEX_STRIDE = COORDS_PER_VERTEX * 4 // 4 bytes per float
     }
 
-    // OpenGL programs
-    private var copyProgram = 0
-    private var effectProgram = 0
-    
-    // Textures and FBO
-    private var oesTextureId = 0
-    private var fboTextureId = 0
-    private var fboId = 0
-    
-    private var vertexBuffer: FloatBuffer? = null
+    /** What the screen showed in the last frame, for the statistics */
+    enum class Upscaling { ACTIVE, NOT_NEEDED, OFF, UNSUPPORTED }
 
-    // Pass 1 (Copy) locations
+    /** Whether this renderer was made to upscale; see [upscalingAvailable] for whether it can */
+    val upscaling get() = upscaleShader != null
+
+    /** SGSR's shader works on this device; known once the GL surface exists */
+    @Volatile var upscalingAvailable = false
+        private set
+
+    /** Turns super resolution off and on during the stream, to compare it with plain scaling */
+    @Volatile var upscalingEnabled = true
+
+    /** What the last frame's last pass did and the size it drew at, or null before the first frame */
+    @Volatile var lastUpscaling: Pair<Upscaling, Size>? = null
+        private set
+
+    /** A linked program and where its quad attributes are */
+    private class Program(val id: Int) {
+        val positionLoc = GLES30.glGetAttribLocation(id, "a_Position")
+        val texCoordLoc = GLES30.glGetAttribLocation(id, "a_TexCoord")
+        fun uniformLoc(name: String) = GLES30.glGetUniformLocation(id, name)
+    }
+
+    /** A texture of the video's size and the framebuffer that draws into it */
+    private class RenderTarget(val textureId: Int, val fboId: Int)
+
+    private lateinit var copyProgram: Program
+    private var debandProgram: Program? = null
+    private var blitProgram: Program? = null
+    private var upscaleProgram: Program? = null
+
     private var uCopySTMatrixLoc = 0
-    private var uCopyTextureLoc = 0
-    private var aCopyPosLoc = 0
-    private var aCopyTexLoc = 0
-    
-    // Pass 2 (Effect) locations
-    private var uEffTextureLoc = 0
-    private var uEffTimeLoc = 0
-    private var uEffScreenSizeLoc = 0
-    private var uEffSharpnessLoc = 0
-    private var aEffPosLoc = 0
-    private var aEffTexLoc = 0
+    private var uDebandTimeLoc = 0
+
+    private var oesTextureId = 0
+    /** The decoder's frame, copied */
+    private lateinit var videoTarget: RenderTarget
+    /** The debanded frame, when it's upscaled after */
+    private var debandedTarget: RenderTarget? = null
+
+    private var vertexBuffer: FloatBuffer? = null
 
     // SurfaceTexture and Surface for MediaCodec output
     private var surfaceTexture: SurfaceTexture? = null
@@ -221,15 +288,9 @@ class DebandRenderer(
     // Texture transform matrix
     private val stMatrix = FloatArray(16)
 
-    var sharpness = 0f
-
-    // Screen dimensions
-    private var screenWidth = 1
-    private var screenHeight = 1
-
-    // Size the FBO texture is currently allocated with
-    private var fboWidth = 0
-    private var fboHeight = 0
+    // Size of the GL surface: the view's when upscaling, else the video's
+    private var surfaceWidth = 1
+    private var surfaceHeight = 1
 
     // Frames queued by the decoder that have not been latched yet
     private val pendingFrames = AtomicInteger(0)
@@ -240,42 +301,44 @@ class DebandRenderer(
     }
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
-        // 1. Create copy program
-        copyProgram = createProgram(COPY_VERTEX_SHADER, COPY_FRAGMENT_SHADER)
-        aCopyPosLoc = GLES30.glGetAttribLocation(copyProgram, "a_Position")
-        aCopyTexLoc = GLES30.glGetAttribLocation(copyProgram, "a_TexCoord")
-        uCopySTMatrixLoc = GLES30.glGetUniformLocation(copyProgram, "u_STMatrix")
-        uCopyTextureLoc = GLES30.glGetUniformLocation(copyProgram, "u_Texture")
+        // New GL context: everything is created again
+        copyProgram = Program(createProgram(COPY_VERTEX_SHADER, COPY_FRAGMENT_SHADER)).also {
+            GLES30.glUseProgram(it.id)
+            GLES30.glUniform1i(it.uniformLoc("u_Texture"), 0)
+            uCopySTMatrixLoc = it.uniformLoc("u_STMatrix")
+        }
+        debandProgram = if (deband) {
+            Program(createProgram(EFFECT_VERTEX_SHADER, DEBAND_FRAGMENT_SHADER)).also {
+                GLES30.glUseProgram(it.id)
+                GLES30.glUniform1i(it.uniformLoc("u_Texture"), 0)
+                // Debanding works on the video's pixels, even when it's drawn to a bigger view later
+                GLES30.glUniform2f(it.uniformLoc("u_ScreenSize"), videoWidth.toFloat(), videoHeight.toFloat())
+                GLES30.glUniform1f(it.uniformLoc("u_Sharpness"), sharpness)
+                GLES30.glUniform1f(it.uniformLoc("u_LumaInAlpha"), if (upscaling) 1f else 0f)
+                uDebandTimeLoc = it.uniformLoc("u_Time")
+            }
+        } else null
+        blitProgram = if (upscaling) {
+            Program(createProgram(EFFECT_VERTEX_SHADER, BLIT_FRAGMENT_SHADER)).also {
+                GLES30.glUseProgram(it.id)
+                GLES30.glUniform1i(it.uniformLoc("u_Texture"), 0)
+            }
+        } else null
+        upscaleProgram = upscaleShader?.let { createUpscaleProgram(it) }
+        upscalingAvailable = upscaleProgram != null
 
-        // 2. Create effect program
-        effectProgram = createProgram(EFFECT_VERTEX_SHADER, EFFECT_FRAGMENT_SHADER)
-        aEffPosLoc = GLES30.glGetAttribLocation(effectProgram, "a_Position")
-        aEffTexLoc = GLES30.glGetAttribLocation(effectProgram, "a_TexCoord")
-        uEffTextureLoc = GLES30.glGetUniformLocation(effectProgram, "u_Texture")
-        uEffTimeLoc = GLES30.glGetUniformLocation(effectProgram, "u_Time")
-        uEffScreenSizeLoc = GLES30.glGetUniformLocation(effectProgram, "u_ScreenSize")
-        uEffSharpnessLoc = GLES30.glGetUniformLocation(effectProgram, "u_Sharpness")
-
-        // 3. Create OES texture
-        val textures = IntArray(2)
-        GLES30.glGenTextures(2, textures, 0)
+        val textures = IntArray(1)
+        GLES30.glGenTextures(1, textures, 0)
         oesTextureId = textures[0]
-        fboTextureId = textures[1]
-
         GLES30.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, oesTextureId)
         GLES30.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR)
         GLES30.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR)
-        
-        // 4. Create FBO
-        val fbos = IntArray(1)
-        GLES30.glGenFramebuffers(1, fbos, 0)
-        fboId = fbos[0]
 
-        // 5. Create SurfaceTexture
-        // New GL context: all textures are new, so the FBO texture has to be allocated again
-        fboWidth = 0
-        fboHeight = 0
+        videoTarget = createRenderTarget()
+        debandedTarget = if (deband && upscaling) createRenderTarget() else null
+
         pendingFrames.set(0)
+        lastUpscaling = null
         surfaceTexture = SurfaceTexture(oesTextureId).also {
             // Buffers must have the video's size, not the screen's, and must not change while decoding
             it.setDefaultBufferSize(videoWidth, videoHeight)
@@ -294,28 +357,58 @@ class DebandRenderer(
         GLES30.glClearColor(0.0f, 0.0f, 0.0f, 1.0f)
     }
 
-    override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
-        GLES30.glViewport(0, 0, width, height)
-        screenWidth = width
-        screenHeight = height
+    /** SGSR's program, or null where it can't run: the video is then scaled bilinearly */
+    private fun createUpscaleProgram(fragmentShader: String): Program? {
+        val version = IntArray(2)
+        GLES30.glGetIntegerv(GLES30.GL_MAJOR_VERSION, version, 0)
+        GLES30.glGetIntegerv(GLES30.GL_MINOR_VERSION, version, 1)
+        if (version[0] < 3 || (version[0] == 3 && version[1] < 1)) {
+            Log.w(TAG, "No super resolution: SGSR needs OpenGL ES 3.1, this context is ${version[0]}.${version[1]}")
+            return null
+        }
+        val id = try {
+            createProgram(UPSCALE_VERTEX_SHADER, fragmentShader)
+        } catch (e: RuntimeException) {
+            Log.e(TAG, "No super resolution: SGSR's shader doesn't work here", e)
+            return null
+        }
+        if (id == 0)
+            return null
+        return Program(id).also {
+            GLES30.glUseProgram(it.id)
+            GLES30.glUniform1i(it.uniformLoc("ps0"), 0)
+            // Texel size and size of the input, as SGSR expects them
+            GLES30.glUniform4f(it.uniformLoc("ViewportInfo"),
+                1f / videoWidth, 1f / videoHeight, videoWidth.toFloat(), videoHeight.toFloat())
+        }
+    }
 
-        // Only reallocate the FBO when the size actually changed
-        if (width == fboWidth && height == fboHeight)
-            return
-        fboWidth = width
-        fboHeight = height
-
-        // Resize FBO texture
-        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, fboTextureId)
-        GLES30.glTexImage2D(GLES30.GL_TEXTURE_2D, 0, GLES30.GL_RGBA8, width, height, 0, GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE, null)
+    private fun createRenderTarget(): RenderTarget {
+        val ids = IntArray(1)
+        GLES30.glGenTextures(1, ids, 0)
+        val textureId = ids[0]
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId)
+        GLES30.glTexImage2D(GLES30.GL_TEXTURE_2D, 0, GLES30.GL_RGBA8, videoWidth, videoHeight, 0, GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE, null)
         GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR)
         GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR)
         GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE)
         GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE)
 
+        GLES30.glGenFramebuffers(1, ids, 0)
+        val fboId = ids[0]
         GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, fboId)
-        GLES30.glFramebufferTexture2D(GLES30.GL_FRAMEBUFFER, GLES30.GL_COLOR_ATTACHMENT0, GLES30.GL_TEXTURE_2D, fboTextureId, 0)
+        GLES30.glFramebufferTexture2D(GLES30.GL_FRAMEBUFFER, GLES30.GL_COLOR_ATTACHMENT0, GLES30.GL_TEXTURE_2D, textureId, 0)
+        val status = GLES30.glCheckFramebufferStatus(GLES30.GL_FRAMEBUFFER)
+        if (status != GLES30.GL_FRAMEBUFFER_COMPLETE)
+            Log.e(TAG, "Framebuffer incomplete: 0x${Integer.toHexString(status)}")
         GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
+        return RenderTarget(textureId, fboId)
+    }
+
+    override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
+        // The render targets have the video's size, so a resize or rotation only changes the last pass
+        surfaceWidth = width
+        surfaceHeight = height
     }
 
     override fun onDrawFrame(gl: GL10?) {
@@ -331,50 +424,64 @@ class DebandRenderer(
         }
 
         // --- PASS 1: OES to FBO ---
-        GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, fboId)
-        GLES30.glViewport(0, 0, screenWidth, screenHeight)
-        GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT)
-        GLES30.glUseProgram(copyProgram)
+        drawPass(copyProgram, videoTarget.fboId, videoWidth, videoHeight, GLES11Ext.GL_TEXTURE_EXTERNAL_OES, oesTextureId) {
+            GLES30.glUniformMatrix4fv(uCopySTMatrixLoc, 1, false, stMatrix, 0)
+        }
+        var frame = videoTarget.textureId
 
-        GLES30.glActiveTexture(GLES30.GL_TEXTURE0)
-        GLES30.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, oesTextureId)
-        GLES30.glUniform1i(uCopyTextureLoc, 0)
-        GLES30.glUniformMatrix4fv(uCopySTMatrixLoc, 1, false, stMatrix, 0)
+        // --- PASS 2: debanding, to the screen (at the video's size) or to the FBO that is upscaled ---
+        debandProgram?.let { program ->
+            val target = debandedTarget
+            drawPass(program, target?.fboId ?: 0,
+                if (target != null) videoWidth else surfaceWidth, if (target != null) videoHeight else surfaceHeight,
+                GLES30.GL_TEXTURE_2D, frame) {
+                GLES30.glUniform1f(uDebandTimeLoc, frameCount)
+            }
+            if (target != null)
+                frame = target.textureId
+        }
 
-        vertexBuffer?.position(0)
-        GLES30.glVertexAttribPointer(aCopyPosLoc, 2, GLES30.GL_FLOAT, false, VERTEX_STRIDE, vertexBuffer)
-        GLES30.glEnableVertexAttribArray(aCopyPosLoc)
-        vertexBuffer?.position(2)
-        GLES30.glVertexAttribPointer(aCopyTexLoc, 2, GLES30.GL_FLOAT, false, VERTEX_STRIDE, vertexBuffer)
-        GLES30.glEnableVertexAttribArray(aCopyTexLoc)
-        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4)
-
-        // --- PASS 2: FBO to Screen (Effects) ---
-        GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
-        GLES30.glViewport(0, 0, screenWidth, screenHeight)
-        GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT)
-        GLES30.glUseProgram(effectProgram)
-
-        GLES30.glActiveTexture(GLES30.GL_TEXTURE0)
-        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, fboTextureId)
-        GLES30.glUniform1i(uEffTextureLoc, 0)
-        GLES30.glUniform1f(uEffTimeLoc, frameCount)
-        GLES30.glUniform2f(uEffScreenSizeLoc, screenWidth.toFloat(), screenHeight.toFloat())
-        GLES30.glUniform1f(uEffSharpnessLoc, sharpness)
-
-        vertexBuffer?.position(0)
-        GLES30.glVertexAttribPointer(aEffPosLoc, 2, GLES30.GL_FLOAT, false, VERTEX_STRIDE, vertexBuffer)
-        GLES30.glEnableVertexAttribArray(aEffPosLoc)
-        vertexBuffer?.position(2)
-        GLES30.glVertexAttribPointer(aEffTexLoc, 2, GLES30.GL_FLOAT, false, VERTEX_STRIDE, vertexBuffer)
-        GLES30.glEnableVertexAttribArray(aEffTexLoc)
-        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4)
+        // --- PASS 3: upscaling to the screen ---
+        blitProgram?.let { blit ->
+            val upscale = upscaleProgram
+            val state = when {
+                upscale == null -> Upscaling.UNSUPPORTED
+                !upscalingEnabled -> Upscaling.OFF
+                surfaceWidth <= videoWidth && surfaceHeight <= videoHeight -> Upscaling.NOT_NEEDED
+                else -> Upscaling.ACTIVE
+            }
+            drawPass(if (state == Upscaling.ACTIVE && upscale != null) upscale else blit,
+                0, surfaceWidth, surfaceHeight, GLES30.GL_TEXTURE_2D, frame)
+            val last = lastUpscaling
+            if (last == null || last.first != state || last.second.width != surfaceWidth || last.second.height != surfaceHeight)
+                lastUpscaling = state to Size(surfaceWidth, surfaceHeight)
+        }
 
         frameCount += 1.0f
         if (frameCount > 1000000f) frameCount = 0f
+    }
 
-        GLES30.glDisableVertexAttribArray(aEffPosLoc)
-        GLES30.glDisableVertexAttribArray(aEffTexLoc)
+    /** Draws the quad with [program] into [framebuffer] (0 is the screen), reading [texture] */
+    private inline fun drawPass(program: Program, framebuffer: Int, width: Int, height: Int,
+                                textureTarget: Int, texture: Int, setUniforms: () -> Unit = {}) {
+        GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, framebuffer)
+        GLES30.glViewport(0, 0, width, height)
+        GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT)
+        GLES30.glUseProgram(program.id)
+        GLES30.glActiveTexture(GLES30.GL_TEXTURE0)
+        GLES30.glBindTexture(textureTarget, texture)
+        setUniforms()
+
+        val vertices = vertexBuffer ?: return
+        vertices.position(0)
+        GLES30.glVertexAttribPointer(program.positionLoc, 2, GLES30.GL_FLOAT, false, VERTEX_STRIDE, vertices)
+        GLES30.glEnableVertexAttribArray(program.positionLoc)
+        vertices.position(2)
+        GLES30.glVertexAttribPointer(program.texCoordLoc, 2, GLES30.GL_FLOAT, false, VERTEX_STRIDE, vertices)
+        GLES30.glEnableVertexAttribArray(program.texCoordLoc)
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4)
+        GLES30.glDisableVertexAttribArray(program.positionLoc)
+        GLES30.glDisableVertexAttribArray(program.texCoordLoc)
     }
 
     override fun onFrameAvailable(surfaceTexture: SurfaceTexture?) {
@@ -382,13 +489,13 @@ class DebandRenderer(
         requestRender()
     }
 
+    /**
+     * Releases the decoder's surface. The GL objects belong to the GL context, which GLSurfaceView
+     * destroys with its thread, and this isn't called on that thread.
+     */
     fun release() {
         surface?.release()
         surfaceTexture?.release()
-        if (copyProgram != 0) GLES30.glDeleteProgram(copyProgram)
-        if (effectProgram != 0) GLES30.glDeleteProgram(effectProgram)
-        GLES30.glDeleteTextures(2, intArrayOf(oesTextureId, fboTextureId), 0)
-        GLES30.glDeleteFramebuffers(1, intArrayOf(fboId), 0)
     }
 
     private fun createProgram(vertexSource: String, fragmentSource: String): Int {
@@ -404,6 +511,9 @@ class DebandRenderer(
         GLES30.glAttachShader(program, vertexShader)
         GLES30.glAttachShader(program, fragmentShader)
         GLES30.glLinkProgram(program)
+        // The program keeps what it needs, so the shaders go away with it
+        GLES30.glDeleteShader(vertexShader)
+        GLES30.glDeleteShader(fragmentShader)
 
         val linkStatus = IntArray(1)
         GLES30.glGetProgramiv(program, GLES30.GL_LINK_STATUS, linkStatus, 0)

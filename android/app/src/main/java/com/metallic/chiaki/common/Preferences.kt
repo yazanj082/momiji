@@ -149,6 +149,13 @@ class Preferences(context: Context)
 		get() = sharedPreferences.getBoolean(debandingEnabledKey, false)
 		set(value) { sharedPreferences.edit().putBoolean(debandingEnabledKey, value).apply() }
 
+	val upscalingEnabledKey get() = resources.getString(R.string.preferences_upscaling_key)
+	var upscalingEnabled
+		// Off by default, like the switch in the settings: drawing through shaders adds a little delay,
+		// and it only helps on screens with more pixels than the stream
+		get() = sharedPreferences.getBoolean(upscalingEnabledKey, false)
+		set(value) { sharedPreferences.edit().putBoolean(upscalingEnabledKey, value).apply() }
+
 	val touchscreenTouchpadEnabledKey get() = "preferences_touchscreen_touchpad_enabled"
 	var touchscreenTouchpadEnabled
 		get() = sharedPreferences.getBoolean(touchscreenTouchpadEnabledKey, false)

@@ -218,7 +218,8 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		}
 	}
 
-	private var debandRenderer: DebandRenderer? = null
+	/** Draws the video through shaders, when debanding or super resolution is on */
+	private var videoRenderer: VideoRenderer? = null
 
 	/**
 	 * Lets the display run at a rate that fits the stream, for example 60 or 120 Hz instead of 90 Hz,
@@ -239,26 +240,33 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 	private fun setupVideoOutput() {
 		val prefs = Preferences(this)
 		viewModel.session.detachSurface()
-		
-		if (prefs.debandingEnabled) {
-			// Use GLSurfaceView with debanding shader
+		val upscale = prefs.upscalingEnabled && VideoRenderer.isUpscalingSupported(this)
+
+		if (prefs.debandingEnabled || upscale) {
+			// Use GLSurfaceView to draw the video through shaders
 			binding.surfaceView.visibility = View.GONE
 			binding.debandSurfaceView.visibility = View.VISIBLE
-			
+
 			val videoProfile = viewModel.session.connectInfo.videoProfile
-			debandRenderer = DebandRenderer(videoProfile.width, videoProfile.height, { binding.debandSurfaceView.requestRender() }) { surface ->
+			val upscaleShader = if (upscale)
+				assets.open(VideoRenderer.UPSCALE_SHADER_ASSET).bufferedReader().use { it.readText() }
+			else
+				null
+			videoRenderer = VideoRenderer(videoProfile.width, videoProfile.height, prefs.debandingEnabled,
+				prefs.sharpnessIntensity, upscaleShader, { binding.debandSurfaceView.requestRender() }) { surface ->
 				viewModel.session.attachToSurface(surface)
 			}
 
 			binding.debandSurfaceView.setEGLContextClientVersion(3)
 			binding.debandSurfaceView.setEGLConfigChooser(8, 8, 8, 8, 0, 0)
 			binding.debandSurfaceView.holder.setFormat(android.graphics.PixelFormat.RGBA_8888)
-			// Render the filter at the stream's resolution and let the system scale it to the view.
-			// Otherwise the cost grows with the window (a 1440p/4K monitor in DeX is far too slow and
-			// stalls the video), and every resize or rotation reallocates the render targets.
-			binding.debandSurfaceView.holder.setFixedSize(videoProfile.width, videoProfile.height)
-			binding.debandSurfaceView.setRenderer(debandRenderer)
-			debandRenderer!!.sharpness = prefs.sharpnessIntensity
+			// Debanding runs at the stream's resolution, as its cost would grow with the window (a
+			// 1440p/4K monitor in DeX is far too slow and stalls the video). Without upscaling, the
+			// surface has that size too and the system scales it to the view. Upscaling needs the view's
+			// size, but only its last pass, which is cheap, runs at that size.
+			if (!upscale)
+				binding.debandSurfaceView.holder.setFixedSize(videoProfile.width, videoProfile.height)
+			binding.debandSurfaceView.setRenderer(videoRenderer)
 			// Draw only when the decoder delivers a frame instead of at the display's refresh rate
 			binding.debandSurfaceView.renderMode = android.opengl.GLSurfaceView.RENDERMODE_WHEN_DIRTY
 		} else {
@@ -297,7 +305,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 	{
 		super.onResume()
 		hideSystemUI()
-		if (Preferences(this).debandingEnabled) {
+		if (videoRenderer != null) {
 			binding.debandSurfaceView.onResume()
 		}
 		(getSystemService(INPUT_SERVICE) as InputManager).registerInputDeviceListener(inputDeviceListener, null)
@@ -334,7 +342,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		// The stream goes on in the small window
 		if(isInPictureInPictureMode)
 			return
-		if (Preferences(this).debandingEnabled) {
+		if (videoRenderer != null) {
 			binding.debandSurfaceView.onPause()
 		}
 		viewModel.input.menuComboCallback = null
@@ -438,6 +446,14 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 			statsHandler.post(updateStatsRunnable)
 	}
 
+	/** Turns super resolution off or on right away, and remembers it for the next streams */
+	private fun setUpscalingEnabled(enabled: Boolean)
+	{
+		Preferences(this).upscalingEnabled = enabled
+		videoRenderer?.upscalingEnabled = enabled
+		binding.debandSurfaceView.requestRender()
+	}
+
 	private fun updateStats()
 	{
 		val stats = viewModel.session.stats() ?: return
@@ -452,18 +468,33 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		val profile = viewModel.session.connectInfo.videoProfile
 		// Technical figures, in the same digits in every language
 		fun format(id: Int, vararg args: Any) = String.format(Locale.ROOT, getString(id), *args)
-		binding.statsTextView.text = listOf(
+		binding.statsTextView.text = listOfNotNull(
 			format(R.string.stream_stats_video, profile.width, profile.height, fps),
+			upscalingStats(),
 			format(R.string.stream_stats_network, stats.bitrateMbps, stats.packetLoss * 100f, stats.pingMs),
 			format(R.string.stream_stats_decode, stats.decodeMsAverage, stats.decodeMsMax)
 		).joinToString("\n")
+	}
+
+	/** What super resolution does with the picture, when it's on for this stream */
+	private fun upscalingStats(): String?
+	{
+		val (state, size) = videoRenderer?.lastUpscaling ?: return null
+		return when(state)
+		{
+			// The size in the same digits as the other figures
+			VideoRenderer.Upscaling.ACTIVE -> String.format(Locale.ROOT, getString(R.string.stream_stats_upscaled), size.width, size.height)
+			VideoRenderer.Upscaling.NOT_NEEDED -> getString(R.string.stream_stats_upscaling_not_needed)
+			VideoRenderer.Upscaling.UNSUPPORTED -> getString(R.string.stream_stats_upscaling_unsupported)
+			VideoRenderer.Upscaling.OFF -> null
+		}
 	}
 
 	override fun onDestroy()
 	{
 		super.onDestroy()
 		rumble?.stop()
-		debandRenderer?.release()
+		videoRenderer?.release()
 		controlsDisposable.dispose()
 	}
 
@@ -594,18 +625,18 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		val title = controllerBattery()?.let { (percent, charging) ->
 			getString(if(charging) R.string.stream_menu_title_battery_charging else R.string.stream_menu_title_battery, percent)
 		} ?: getString(R.string.stream_menu_title)
+		// Super resolution can be turned off and on to compare, when this stream uses it
+		val upscalingEnabled = videoRenderer?.takeIf { it.upscalingAvailable }?.upscalingEnabled
+		val items = listOfNotNull<Pair<String, () -> Unit>>(
+			getString(R.string.action_stream_menu_resume) to {},
+			getString(if(statsVisible) R.string.action_hide_stats else R.string.action_show_stats) to { setStatsVisible(!statsVisible) },
+			upscalingEnabled?.let { enabled ->
+				getString(if(enabled) R.string.action_upscaling_off else R.string.action_upscaling_on) to { setUpscalingEnabled(!enabled) }
+			},
+			getString(R.string.action_quit_session) to { finish() })
 		dialog = MaterialAlertDialogBuilder(this)
 			.setTitle(title)
-			.setItems(arrayOf(
-				getString(R.string.action_stream_menu_resume),
-				getString(if(statsVisible) R.string.action_hide_stats else R.string.action_show_stats),
-				getString(R.string.action_quit_session))) { _, which ->
-				when(which)
-				{
-					1 -> setStatsVisible(!statsVisible)
-					2 -> finish()
-				}
-			}
+			.setItems(items.map { it.first }.toTypedArray()) { _, which -> items[which].second() }
 			.setOnDismissListener {
 				dialog = null
 				hideSystemUI()

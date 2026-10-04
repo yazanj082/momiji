@@ -23,7 +23,12 @@
     <string name="stream_on_screen_controls">On-screen controls</string>
     <string name="action_show_stats">Show statistics</string>
     <string name="action_hide_stats">Hide statistics</string>
+    <string name="action_upscaling_on">Turn on super resolution</string>
+    <string name="action_upscaling_off">Turn off super resolution</string>
     <string name="stream_stats_video">%1$d×%2$d · %3$.0f fps</string>
+    <string name="stream_stats_upscaled">Upscaled to %1$d×%2$d with super resolution</string>
+    <string name="stream_stats_upscaling_not_needed">Super resolution not needed: the screen isn\'t bigger than the stream</string>
+    <string name="stream_stats_upscaling_unsupported">Super resolution doesn\'t work on this device</string>
     <string name="stream_stats_network">%1$.1f Mbit/s · %2$.1f%% lost · ping %3$.0f ms</string>
     <string name="stream_stats_decode">Decoding %1$.1f ms, at most %2$.1f ms</string>
     <string name="stream_menu_hint">Press L1 + R1 + Options + Create together to open the menu</string>
@@ -217,6 +222,9 @@
     <string name="quality_away_title">Quality away from home</string>
     <string name="preferences_debanding_title">Smooth gradients</string>
     <string name="preferences_debanding_summary">Hides color banding in dark scenes, but adds a little delay</string>
+    <string name="preferences_upscaling_title">Super resolution</string>
+    <string name="preferences_upscaling_summary">Sharper picture when the screen has more pixels than the stream, such as a 720p stream on a phone or a 4K TV, but adds a little delay</string>
+    <string name="preferences_upscaling_unsupported">Needs OpenGL ES 3.1, which this device doesn\'t have</string>
     <string name="preferences_swap_cross_moon_title">Swap face buttons</string>
     <string name="preferences_swap_cross_moon_summary">Cross with Circle and Square with Triangle, for Nintendo-style layouts such as many 8BitDo controllers</string>
     <string name="preferences_controllers_title">Controllers</string>
@@ -350,6 +358,7 @@
     <string name="preferences_bitrate_key" translatable="false">stream_bitrate</string>
     <string name="preferences_codec_key" translatable="false">stream_codec</string>
     <string name="preferences_debanding_key" translatable="false">stream_debanding</string>
+    <string name="preferences_upscaling_key" translatable="false">stream_upscaling</string>
 
     <!-- Why a console can't be found or a stream ended -->
     <string name="help_title_console_busy">The console is busy</string>

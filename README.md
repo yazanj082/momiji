@@ -11,6 +11,7 @@ Momiji streams games from your PS5 or PS4 to Android phones, tablets, TV boxes a
 - **Controllers**: DualSense, DualShock 4, Xbox and other gamepads, with rumble. Button mapping, stick dead zone and a test for each controller, and its battery level in the stream menu. On-screen controls are hidden while a controller is connected.
 - **DualSense**: touch haptics on the controller's own actuators over USB, gyro and touchpad, plus adaptive triggers where Android gives access to the controller, and the light bar on Android 12 and later.
 - **Picture**: up to 1080p at 60 fps, H.264 or HEVC, up to 100 Mbps. Quality presets (Smooth, Balanced, Sharp), also for each console and for playing away from home, and an optional debanding filter for smooth gradients.
+- **Super resolution**: an optional upscaler sharpens the stream on screens with more pixels than it, such as a 720p stream on a 1080p phone, or a 4K TV.
 - **Low latency**: hardware decoding in low latency mode, the display's refresh rate matched to the stream, and the phone's low latency Wi-Fi mode. Optional statistics show the bitrate, packet loss, ping and decoding time.
 - **Picture-in-picture**: leaving the app keeps the stream going in a small window.
 - **TV boxes**: works with a TV remote or controller, and can start right into Momiji. Press **L1 + R1 + Options + Create** together to open the stream menu with just a controller.
@@ -69,6 +70,7 @@ Momiji is built on the work of these projects and all their contributors:
 - [Chiaki](https://git.sr.ht/~thestr4ng3r/chiaki) by Florian Märkl
 - [chiaki-ng](https://github.com/streetpea/chiaki-ng) by Street Pea
 - [chiaki-ng-android-extended](https://github.com/SalamiTheMan/chiaki-ng-android-extended) by SalamiTheMan
+- [Snapdragon Game Super Resolution](https://github.com/SnapdragonGameStudios/snapdragon-gsr) by Qualcomm, the upscaler behind super resolution
 
 ## Privacy
 
@@ -77,6 +79,8 @@ Momiji doesn't collect any personal data. See the [privacy policy](PRIVACY.md).
 ## License
 
 Momiji is licensed under the GNU Affero General Public License v3.0, with an exception for OpenSSL. See [COPYING](COPYING) and [LICENSES](LICENSES).
+
+The super resolution shader, [`sgsr1_shader_mobile_edge_direction.frag`](android/app/src/main/assets/sgsr1_shader_mobile_edge_direction.frag), is Qualcomm's Snapdragon Game Super Resolution with small changes, under the [BSD 3-Clause License](LICENSES/BSD-3-Clause.txt).
 
 ## Disclaimer
 
