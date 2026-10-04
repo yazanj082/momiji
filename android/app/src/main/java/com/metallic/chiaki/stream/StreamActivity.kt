@@ -113,6 +113,16 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 			showOverlay()
 		}
 
+		// The display shows whichever of the two views the video goes to
+		val frameRateCallback = object: SurfaceHolder.Callback
+		{
+			override fun surfaceCreated(holder: SurfaceHolder) = matchStreamFrameRate(holder.surface)
+			override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {}
+			override fun surfaceDestroyed(holder: SurfaceHolder) {}
+		}
+		binding.surfaceView.holder.addCallback(frameRateCallback)
+		binding.debandSurfaceView.holder.addCallback(frameRateCallback)
+
 // Setup video output based on debanding preference
 		setupVideoOutput()
 		
@@ -182,6 +192,22 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 	}
 
 	private var debandRenderer: DebandRenderer? = null
+
+	/**
+	 * Lets the display run at a rate that fits the stream, for example 60 or 120 Hz instead of 90 Hz,
+	 * so that every frame is shown for the same time
+	 */
+	private fun matchStreamFrameRate(surface: Surface)
+	{
+		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.R || !surface.isValid)
+			return
+		val fps = viewModel.session.connectInfo.videoProfile.maxFPS.toFloat()
+		// Only switches that don't blank the screen, as a new HDMI mode does on TVs for seconds
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+			surface.setFrameRate(fps, Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE, Surface.CHANGE_FRAME_RATE_ONLY_IF_SEAMLESS)
+		else
+			surface.setFrameRate(fps, Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE)
+	}
 
 	private fun setupVideoOutput() {
 		val prefs = Preferences(this)
