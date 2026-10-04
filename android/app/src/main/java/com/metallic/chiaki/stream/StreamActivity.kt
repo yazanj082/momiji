@@ -31,6 +31,7 @@ import com.metallic.chiaki.touchcontrols.DefaultTouchControlsFragment
 import com.metallic.chiaki.touchcontrols.TouchControlsFragment
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.addTo
+import kotlin.math.roundToInt
 
 private sealed class DialogContents
 private object StreamQuitDialog: DialogContents()
@@ -45,6 +46,9 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		const val EXTRA_CONNECT_INFO = "connect_info"
 		private const val HIDE_UI_TIMEOUT_MS = 2000L
 		private const val STATS_INTERVAL_MS = 1000L
+		private const val BATTERY_CHECK_INTERVAL_MS = 60_000L
+		// Battery levels in percent at which a controller's battery is reported as low, once each
+		private val BATTERY_WARNING_LEVELS = listOf(15, 5)
 	}
 
 	private lateinit var viewModel: StreamViewModel
@@ -285,6 +289,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		viewModel.session.resume()
 		if(Preferences(this).streamStatsEnabled)
 			setStatsVisible(true)
+		statsHandler.post(checkBatteryRunnable)
 	}
 
 	private var wifiLock: WifiManager.WifiLock? = null
@@ -318,6 +323,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		(getSystemService(INPUT_SERVICE) as InputManager).unregisterInputDeviceListener(inputDeviceListener)
 		rumble?.stop()
 		statsHandler.removeCallbacks(updateStatsRunnable)
+		statsHandler.removeCallbacks(checkBatteryRunnable)
 		viewModel.session.pause()
 	}
 
@@ -498,8 +504,11 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		// The dialog takes the input from here on, so the console must not see the combo held forever
 		viewModel.input.releaseAll()
 		val statsVisible = binding.statsTextView.isVisible
+		val title = controllerBattery()?.let { (percent, charging) ->
+			getString(if(charging) R.string.stream_menu_title_battery_charging else R.string.stream_menu_title_battery, percent)
+		} ?: getString(R.string.stream_menu_title)
 		dialog = MaterialAlertDialogBuilder(this)
-			.setTitle(R.string.stream_menu_title)
+			.setTitle(title)
 			.setItems(arrayOf(
 				getString(R.string.action_stream_menu_resume),
 				getString(if(statsVisible) R.string.action_hide_stats else R.string.action_show_stats),
@@ -520,6 +529,46 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 	}
 
 	private var streamMenuHintShown = false
+
+	/**
+	 * Battery level in percent of the controller in use and whether it's charging, where Android
+	 * knows it (Android 12+)
+	 */
+	private fun controllerBattery(): Pair<Int, Boolean>?
+	{
+		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.S)
+			return null
+		val device = viewModel.input.lastControllerDeviceId?.let { InputDevice.getDevice(it) }
+			?: InputDevice.getDeviceIds().asSequence().mapNotNull { InputDevice.getDevice(it) }
+				.firstOrNull { !it.isVirtual && it.sources and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD }
+			?: return null
+		val battery = device.batteryState
+		if(!battery.isPresent || battery.capacity.isNaN())
+			return null
+		val charging = battery.status == android.hardware.BatteryState.STATUS_CHARGING
+			|| battery.status == android.hardware.BatteryState.STATUS_FULL
+		return Pair((battery.capacity * 100).roundToInt(), charging)
+	}
+
+	private val batteryWarned = mutableSetOf<Int>()
+
+	private val checkBatteryRunnable = object: Runnable
+	{
+		override fun run()
+		{
+			controllerBattery()?.let { (percent, charging) ->
+				if(charging)
+					batteryWarned.clear()
+				else
+					BATTERY_WARNING_LEVELS.firstOrNull { percent <= it && it !in batteryWarned }?.let { level ->
+						// Lower levels count as warned too, so that a low battery doesn't warn twice at once
+						batteryWarned.addAll(BATTERY_WARNING_LEVELS.filter { it >= level })
+						Toast.makeText(this@StreamActivity, getString(R.string.controller_battery_low, percent), Toast.LENGTH_LONG).show()
+					}
+			}
+			statsHandler.postDelayed(this, BATTERY_CHECK_INTERVAL_MS)
+		}
+	}
 
 	private fun isControllerConnected() = InputDevice.getDeviceIds().any { id ->
 		InputDevice.getDevice(id)?.let { !it.isVirtual && it.sources and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD } ?: false

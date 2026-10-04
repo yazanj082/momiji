@@ -15,6 +15,9 @@
     <string name="action_connect_cancel_connect">Cancel</string>
     <string name="action_quit_session">Quit</string>
     <string name="stream_menu_title">Stream</string>
+    <string name="stream_menu_title_battery">Stream · controller %d%%</string>
+    <string name="stream_menu_title_battery_charging">Stream · controller charging, %d%%</string>
+    <string name="controller_battery_low">Controller battery low: %d%%</string>
     <string name="stream_cant_display">The console doesn\'t allow streaming what it shows right now, the picture comes back when it\'s over</string>
     <string name="action_stream_menu_resume">Resume</string>
     <string name="stream_stats_toggle">Statistics</string>
