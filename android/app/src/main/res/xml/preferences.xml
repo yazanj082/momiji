@@ -107,6 +107,14 @@
             app:title="@string/preferences_codec_title"
             app:summary="%s"
             app:icon="@drawable/ic_codec"/>
+
+        <!-- Off by default: the shader's extra rendering pass adds delay -->
+        <SwitchPreference
+            app:key="@string/preferences_debanding_key"
+            app:title="@string/preferences_debanding_title"
+            app:summary="@string/preferences_debanding_summary"
+            app:defaultValue="false"
+            app:icon="@drawable/ic_resolution" />
     </PreferenceCategory>
 
     <PreferenceCategory
@@ -168,16 +176,6 @@
             app:key="mapping_touchpad"
             app:title="Touchpad Click"
             app:defaultValue="130" />
-    </PreferenceCategory>
-
-    <PreferenceCategory
-        app:key="category_video_deband"
-        app:title="Post-processing">
-        <SwitchPreference
-            app:key="@string/preferences_debanding_key"
-            app:title="@string/preferences_debanding_title"
-            app:summary="@string/preferences_debanding_summary"
-            app:icon="@drawable/ic_resolution" />
     </PreferenceCategory>
 
     <PreferenceCategory

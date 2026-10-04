@@ -132,8 +132,8 @@
     <string name="preferences_bitrate_auto">Auto (%d)</string>
     <string name="preferences_codec_title_h264">H264</string>
     <string name="preferences_codec_title_h265">H265 (PS5 only)</string>
-    <string name="preferences_debanding_title">Debanding</string>
-    <string name="preferences_debanding_summary">Apply GLSL shader to reduce color banding in video (re-connect required)</string>
+    <string name="preferences_debanding_title">Smooth gradients</string>
+    <string name="preferences_debanding_summary">Hides color banding in dark scenes, but adds a little delay</string>
     <string name="preferences_swap_cross_moon_title">Swap Cross/Moon and Box/Pyramid Buttons</string>
     <string name="preferences_swap_cross_moon_summary">Swap face buttons if default mapping is incorrect (e.g. for 8BitDo controllers)</string>
     <string name="preferences_rumble_enabled_title">Rumble</string>

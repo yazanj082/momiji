@@ -127,7 +127,8 @@ class Preferences(context: Context)
 
 	val debandingEnabledKey get() = resources.getString(R.string.preferences_debanding_key)
 	var debandingEnabled
-		get() = sharedPreferences.getBoolean(debandingEnabledKey, true)
+		// Off by default, like the switch in the settings: the shader's extra rendering pass adds delay
+		get() = sharedPreferences.getBoolean(debandingEnabledKey, false)
 		set(value) { sharedPreferences.edit().putBoolean(debandingEnabledKey, value).apply() }
 
 	val touchscreenTouchpadEnabledKey get() = "preferences_touchscreen_touchpad_enabled"
