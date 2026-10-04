@@ -11,6 +11,8 @@ import androidx.core.graphics.drawable.IconCompat
 import androidx.preference.PreferenceManager
 import com.metallic.chiaki.R
 import com.metallic.chiaki.common.RegisteredHost
+import com.metallic.chiaki.common.getDatabase
+import io.reactivex.schedulers.Schedulers
 import com.metallic.chiaki.main.MainActivity
 
 /**
@@ -72,6 +74,11 @@ object ConsoleShortcuts
 		}
 		PlayWidgetProvider.update(context)
 		PlayTileService.requestUpdate(context)
+		// It goes first in the TV's row too
+		if(TvHomeChannel.isSupported(context))
+			getDatabase(context).registeredHostDao().getAll().firstElement()
+				.subscribeOn(Schedulers.io())
+				.subscribe({ update(context, it) }, { Log.w(TAG, "Reading the registered consoles failed", it) })
 	}
 
 	fun canPin(context: Context) = ShortcutManagerCompat.isRequestPinShortcutSupported(context)
@@ -88,6 +95,7 @@ object ConsoleShortcuts
 		val consoles = registeredHosts.sortedByDescending { it.id }.distinctBy { it.serverMac }.map { console(it, null) }
 		val byId = consoles.associateBy { id(it.mac) }
 		val last = lastPlayed(context)
+		TvHomeChannel.update(context, consoles.sortedByDescending { it.mac == last?.mac })
 		if(last != null && byId[id(last.mac)] == null)
 		{
 			PreferenceManager.getDefaultSharedPreferences(context).edit {

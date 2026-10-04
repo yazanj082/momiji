@@ -109,6 +109,8 @@
     <string name="widget_play_description">Plays the console you played last</string>
     <string name="widget_play_subtitle">%s · Tap to play</string>
     <string name="widget_play_none">Tap to open</string>
+    <string name="tv_channel_name">Momiji consoles</string>
+    <string name="tv_program_description">%s · Select to play</string>
     <string name="connect_host_looking">Looking for %s…</string>
     <string name="connect_host_your_console">your console</string>
     <string name="connect_host_not_found">%s wasn\'t found. Check that it is on or in rest mode, and on the same network as this device.</string>
