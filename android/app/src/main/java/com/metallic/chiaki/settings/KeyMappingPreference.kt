@@ -5,50 +5,83 @@ package com.metallic.chiaki.settings
 import android.content.Context
 import android.util.AttributeSet
 import android.view.KeyEvent
-import androidx.appcompat.app.AlertDialog
 import androidx.preference.Preference
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.metallic.chiaki.R
 
-class KeyMappingPreference(context: Context, attrs: AttributeSet?) : Preference(context, attrs) {
+/**
+ * Which key of a controller a PlayStation button comes from, stored as the key code in a string,
+ * 0 for none. Set by pressing the key.
+ */
+class KeyMappingPreference(context: Context, attrs: AttributeSet?) : Preference(context, attrs)
+{
+	constructor(context: Context) : this(context, null)
 
-    override fun onClick() {
-        showMappingDialog()
-    }
+	companion object
+	{
+		/** A name players recognize for a controller's key */
+		fun keyName(context: Context, keyCode: Int): String = when(keyCode)
+		{
+			0 -> context.getString(R.string.key_none)
+			KeyEvent.KEYCODE_BUTTON_A -> "A"
+			KeyEvent.KEYCODE_BUTTON_B -> "B"
+			KeyEvent.KEYCODE_BUTTON_X -> "X"
+			KeyEvent.KEYCODE_BUTTON_Y -> "Y"
+			KeyEvent.KEYCODE_BUTTON_L1 -> context.getString(R.string.key_l1)
+			KeyEvent.KEYCODE_BUTTON_R1 -> context.getString(R.string.key_r1)
+			KeyEvent.KEYCODE_BUTTON_L2 -> context.getString(R.string.key_l2)
+			KeyEvent.KEYCODE_BUTTON_R2 -> context.getString(R.string.key_r2)
+			KeyEvent.KEYCODE_BUTTON_THUMBL -> context.getString(R.string.key_thumbl)
+			KeyEvent.KEYCODE_BUTTON_THUMBR -> context.getString(R.string.key_thumbr)
+			KeyEvent.KEYCODE_BUTTON_START -> context.getString(R.string.key_start)
+			KeyEvent.KEYCODE_BUTTON_SELECT -> context.getString(R.string.key_select)
+			KeyEvent.KEYCODE_BUTTON_MODE -> context.getString(R.string.key_mode)
+			KeyEvent.KEYCODE_MEDIA_RECORD -> context.getString(R.string.key_record)
+			KeyEvent.KEYCODE_DPAD_UP -> context.getString(R.string.key_dpad_up)
+			KeyEvent.KEYCODE_DPAD_DOWN -> context.getString(R.string.key_dpad_down)
+			KeyEvent.KEYCODE_DPAD_LEFT -> context.getString(R.string.key_dpad_left)
+			KeyEvent.KEYCODE_DPAD_RIGHT -> context.getString(R.string.key_dpad_right)
+			// For example BUTTON_C or a keyboard's keys: "Button c", "Space"
+			else -> KeyEvent.keyCodeToString(keyCode).removePrefix("KEYCODE_").replace('_', ' ')
+				.lowercase().replaceFirstChar { it.uppercase() }
+		}
+	}
 
-    private fun showMappingDialog() {
-        val dialog = AlertDialog.Builder(context)
-            .setTitle(title)
-            .setMessage("Press a button on your controller...")
-            .setNegativeButton(android.R.string.cancel, null)
-            .setNeutralButton("Clear") { _, _ ->
-                persistString("0")
-                summary = getFriendlyKeyName(0)
-            }
-            .create()
+	override fun onClick()
+	{
+		val dialog = MaterialAlertDialogBuilder(context)
+			.setTitle(title)
+			.setMessage(context.getString(R.string.key_mapping_prompt, title))
+			.setNegativeButton(android.R.string.cancel, null)
+			.setNeutralButton(R.string.action_clear) { _, _ -> setKeyCode(0) }
+			.create()
+		dialog.setOnKeyListener { d, keyCode, event ->
+			// Back stays for leaving the dialog
+			if(keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_ESCAPE)
+				return@setOnKeyListener false
+			if(event.action == KeyEvent.ACTION_DOWN)
+			{
+				setKeyCode(keyCode)
+				d.dismiss()
+			}
+			true
+		}
+		dialog.show()
+	}
 
-        dialog.setOnKeyListener { d, keyCode, event ->
-            if (event.action == KeyEvent.ACTION_DOWN) {
-                // Ignore some system keys if necessary, but generally we want to allow any button
-                if (keyCode != KeyEvent.KEYCODE_BACK && keyCode != KeyEvent.KEYCODE_ESCAPE) {
-                    persistString(keyCode.toString())
-                    summary = getFriendlyKeyName(keyCode)
-                    d.dismiss()
-                    true
-                } else false
-            } else false
-        }
+	private fun setKeyCode(keyCode: Int)
+	{
+		if(callChangeListener(keyCode.toString()))
+		{
+			persistString(keyCode.toString())
+			summary = keyName(context, keyCode)
+		}
+	}
 
-        dialog.show()
-    }
-
-    override fun onSetInitialValue(defaultValue: Any?) {
-        super.onSetInitialValue(defaultValue)
-        val value = getPersistedString(defaultValue as? String ?: "0")
-        summary = getFriendlyKeyName(value.toIntOrNull() ?: 0)
-    }
-
-    private fun getFriendlyKeyName(keyCode: Int): String {
-        if (keyCode == 0) return "Not set"
-        return KeyEvent.keyCodeToString(keyCode).removePrefix("KEYCODE_")
-    }
+	override fun onSetInitialValue(defaultValue: Any?)
+	{
+		super.onSetInitialValue(defaultValue)
+		val value = getPersistedString(defaultValue as? String ?: "0")
+		summary = keyName(context, value.toIntOrNull() ?: 0)
+	}
 }

@@ -31,7 +31,6 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 	override fun getBoolean(key: String?, defValue: Boolean) = when(key)
 	{
 		preferences.logVerboseKey -> preferences.logVerbose
-		preferences.swapCrossMoonKey -> preferences.swapCrossMoon
 		preferences.rumbleEnabledKey -> preferences.rumbleEnabled
 		preferences.motionEnabledKey -> preferences.motionEnabled
 		preferences.dualSenseEnabledKey -> preferences.dualSenseEnabled
@@ -47,7 +46,6 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 		when(key)
 		{
 			preferences.logVerboseKey -> preferences.logVerbose = value
-			preferences.swapCrossMoonKey -> preferences.swapCrossMoon = value
 			preferences.rumbleEnabledKey -> preferences.rumbleEnabled = value
 			preferences.motionEnabledKey -> preferences.motionEnabled = value
 			preferences.dualSenseEnabledKey -> preferences.dualSenseEnabled = value
@@ -68,7 +66,6 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 		key == preferences.fpsKey -> preferences.fps.value
 		key == preferences.bitrateKey -> preferences.bitrate?.toString() ?: ""
 		key == preferences.codecKey -> preferences.codec.value
-		key.startsWith("mapping_") -> preferences.sharedPreferences.getString(key, defValue)
 		else -> defValue
 	}
 
@@ -91,10 +88,6 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 			{
 				val codec = Preferences.Codec.values().firstOrNull { it.value == value } ?: return
 				preferences.codec = codec
-			}
-			key.startsWith("mapping_") -> 
-			{
-				preferences.sharedPreferences.edit().putString(key, value).apply()
 			}
 		}
 	}

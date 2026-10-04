@@ -120,10 +120,6 @@ class Preferences(context: Context)
 		get() = sharedPreferences.getBoolean(logVerboseKey, false)
 		set(value) { sharedPreferences.edit().putBoolean(logVerboseKey, value).apply() }
 
-	val swapCrossMoonKey get() = resources.getString(R.string.preferences_swap_cross_moon_key)
-	var swapCrossMoon
-		get() = sharedPreferences.getBoolean(swapCrossMoonKey, false)
-		set(value) { sharedPreferences.edit().putBoolean(swapCrossMoonKey, value).apply() }
 
 	val debandingEnabledKey get() = resources.getString(R.string.preferences_debanding_key)
 	var debandingEnabled
@@ -136,80 +132,12 @@ class Preferences(context: Context)
 		get() = sharedPreferences.getBoolean(touchscreenTouchpadEnabledKey, false)
 		set(value) { sharedPreferences.edit().putBoolean(touchscreenTouchpadEnabledKey, value).apply() }
 
-	// Mapping Keys
-	fun getMappingKey(buttonName: String) = "mapping_$buttonName"
-	
-	private fun getMapping(buttonName: String, default: Int): Int {
-		return sharedPreferences.getString(getMappingKey(buttonName), default.toString())?.toIntOrNull() ?: default
-	}
-	
-	private fun setMapping(buttonName: String, value: Int) {
-		sharedPreferences.edit().putString(getMappingKey(buttonName), value.toString()).apply()
-	}
-
-	var mappingCross: Int 
-		get() = getMapping("cross", 96)
-		set(value) = setMapping("cross", value)
-		
-	var mappingCircle: Int
-		get() = getMapping("circle", 97)
-		set(value) = setMapping("circle", value)
-		
-	var mappingSquare: Int
-		get() = getMapping("square", 99)
-		set(value) = setMapping("square", value)
-		
-	var mappingTriangle: Int
-		get() = getMapping("triangle", 100)
-		set(value) = setMapping("triangle", value)
-		
-	var mappingL1: Int
-		get() = getMapping("l1", 102)
-		set(value) = setMapping("l1", value)
-		
-	var mappingR1: Int
-		get() = getMapping("r1", 103)
-		set(value) = setMapping("r1", value)
-		
-	var mappingL2: Int
-		get() = getMapping("l2", 104)
-		set(value) = setMapping("l2", value)
-		
-	var mappingR2: Int
-		get() = getMapping("r2", 105)
-		set(value) = setMapping("r2", value)
-		
-	var mappingL3: Int
-		get() = getMapping("l3", 106)
-		set(value) = setMapping("l3", value)
-		
-	var mappingR3: Int
-		get() = getMapping("r3", 107)
-		set(value) = setMapping("r3", value)
-		
-	var mappingOptions: Int
-		get() = getMapping("options", 108)
-		set(value) = setMapping("options", value)
-		
-	var mappingShare: Int
-		get() = getMapping("share", 109)
-		set(value) = setMapping("share", value)
-		
-	var mappingPs: Int
-		get() = getMapping("ps", 110)
-		set(value) = setMapping("ps", value)
-
-	// Default is the Share button of Xbox Series controllers (KEYCODE_MEDIA_RECORD)
-	var mappingTouchpad: Int
-		get() = getMapping("touchpad", 130)
-		set(value) = setMapping("touchpad", value)
-
-	// Last used Fit/Zoom/Stretch mode of the stream, stored as the TransformMode name
 	val streamStatsEnabledKey get() = "stream_stats_enabled"
 	var streamStatsEnabled
 		get() = sharedPreferences.getBoolean(streamStatsEnabledKey, false)
 		set(value) { sharedPreferences.edit().putBoolean(streamStatsEnabledKey, value).apply() }
 
+	// Last used Fit/Zoom/Stretch mode of the stream, stored as the TransformMode name
 	val streamDisplayModeKey get() = "stream_display_mode"
 	var streamDisplayMode: String?
 		get() = sharedPreferences.getString(streamDisplayModeKey, null)

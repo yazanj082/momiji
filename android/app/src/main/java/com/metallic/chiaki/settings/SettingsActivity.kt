@@ -46,6 +46,14 @@ class SettingsActivity: AppCompatActivity(), PreferenceFragmentCompat.OnPreferen
 			replaceFragment(SettingsRegisteredHostsFragment(), true)
 			true
 		}
+		SettingsControllersFragment::class.java.canonicalName -> {
+			replaceFragment(SettingsControllersFragment(), true)
+			true
+		}
+		SettingsControllerFragment::class.java.canonicalName -> {
+			replaceFragment(SettingsControllerFragment().also { it.arguments = pref.extras }, true)
+			true
+		}
 		else -> false
 	}
 

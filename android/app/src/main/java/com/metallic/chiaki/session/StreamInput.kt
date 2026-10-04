@@ -8,8 +8,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.OnLifecycleEvent
+import com.metallic.chiaki.common.ControllerProfiles
 import com.metallic.chiaki.common.Preferences
 import com.metallic.chiaki.lib.ControllerState
+import kotlin.math.hypot
 
 class StreamInput(val context: Context, val preferences: Preferences)
 {
@@ -47,9 +49,6 @@ class StreamInput(val context: Context, val preferences: Preferences)
 		if(motionControllerState.r2State > 0U)
 			controllerState.r2State = motionControllerState.r2State
 
-		if(swapCrossMoon)
-			controllerState.buttons = swapFaceButtons(controllerState.buttons)
-
 		return controllerState or touchControllerState
 	}
 
@@ -64,32 +63,52 @@ class StreamInput(val context: Context, val preferences: Preferences)
 			controllerStateUpdated()
 		}
 
-	private val swapCrossMoon = preferences.swapCrossMoon
+	private val controllerProfiles = ControllerProfiles(context)
 
-	// Mappings are read once per session instead of from SharedPreferences on every key event
-	private val mappingL2 = preferences.mappingL2
-	private val mappingR2 = preferences.mappingR2
-	private val buttonMappings: Map<Int, UInt> = linkedMapOf(
-		preferences.mappingCross to ControllerState.BUTTON_CROSS,
-		preferences.mappingCircle to ControllerState.BUTTON_MOON,
-		preferences.mappingSquare to ControllerState.BUTTON_BOX,
-		preferences.mappingTriangle to ControllerState.BUTTON_PYRAMID,
-		preferences.mappingL1 to ControllerState.BUTTON_L1,
-		preferences.mappingR1 to ControllerState.BUTTON_R1,
-		preferences.mappingL3 to ControllerState.BUTTON_L3,
-		preferences.mappingR3 to ControllerState.BUTTON_R3,
-		preferences.mappingShare to ControllerState.BUTTON_SHARE,
-		preferences.mappingOptions to ControllerState.BUTTON_OPTIONS,
-		preferences.mappingPs to ControllerState.BUTTON_PS,
-		preferences.mappingTouchpad to ControllerState.BUTTON_TOUCHPAD
-	).filterKeys { it != 0 }.let { mappings ->
-		// Controllers that report the D-pad as keys instead of a hat axis
-		mapOf(
-			KeyEvent.KEYCODE_DPAD_UP to ControllerState.BUTTON_DPAD_UP,
-			KeyEvent.KEYCODE_DPAD_DOWN to ControllerState.BUTTON_DPAD_DOWN,
-			KeyEvent.KEYCODE_DPAD_LEFT to ControllerState.BUTTON_DPAD_LEFT,
-			KeyEvent.KEYCODE_DPAD_RIGHT to ControllerState.BUTTON_DPAD_RIGHT
-		) + mappings
+	/** A controller's settings, as the input handling needs them */
+	private class InputProfile(
+		val buttonMappings: Map<Int, UInt>,
+		val keyL2: Int,
+		val keyR2: Int,
+		/** 0 to 1 */
+		val stickDeadZone: Float
+	)
+
+	// Each controller's settings are read once, instead of from SharedPreferences on every event
+	private val inputProfiles = mutableMapOf<Int, InputProfile>()
+
+	private fun inputProfile(deviceId: Int) = inputProfiles.getOrPut(deviceId) {
+		val profile = controllerProfiles.profile(InputDevice.getDevice(deviceId)?.descriptor)
+		val keyCodes = profile.keyCodes
+		// Swapping the face buttons per controller, for example for Nintendo layouts
+		fun face(button: ControllerProfiles.Button, normal: UInt, swapped: UInt) =
+			keyCodes.getValue(button) to (if(profile.swapFaceButtons) swapped else normal)
+		val mappings = linkedMapOf(
+			face(ControllerProfiles.Button.CROSS, ControllerState.BUTTON_CROSS, ControllerState.BUTTON_MOON),
+			face(ControllerProfiles.Button.CIRCLE, ControllerState.BUTTON_MOON, ControllerState.BUTTON_CROSS),
+			face(ControllerProfiles.Button.SQUARE, ControllerState.BUTTON_BOX, ControllerState.BUTTON_PYRAMID),
+			face(ControllerProfiles.Button.TRIANGLE, ControllerState.BUTTON_PYRAMID, ControllerState.BUTTON_BOX),
+			keyCodes.getValue(ControllerProfiles.Button.L1) to ControllerState.BUTTON_L1,
+			keyCodes.getValue(ControllerProfiles.Button.R1) to ControllerState.BUTTON_R1,
+			keyCodes.getValue(ControllerProfiles.Button.L3) to ControllerState.BUTTON_L3,
+			keyCodes.getValue(ControllerProfiles.Button.R3) to ControllerState.BUTTON_R3,
+			keyCodes.getValue(ControllerProfiles.Button.SHARE) to ControllerState.BUTTON_SHARE,
+			keyCodes.getValue(ControllerProfiles.Button.OPTIONS) to ControllerState.BUTTON_OPTIONS,
+			keyCodes.getValue(ControllerProfiles.Button.PS) to ControllerState.BUTTON_PS,
+			keyCodes.getValue(ControllerProfiles.Button.TOUCHPAD) to ControllerState.BUTTON_TOUCHPAD
+		).filterKeys { it != 0 }
+		InputProfile(
+			// Controllers that report the D-pad as keys instead of a hat axis
+			mapOf(
+				KeyEvent.KEYCODE_DPAD_UP to ControllerState.BUTTON_DPAD_UP,
+				KeyEvent.KEYCODE_DPAD_DOWN to ControllerState.BUTTON_DPAD_DOWN,
+				KeyEvent.KEYCODE_DPAD_LEFT to ControllerState.BUTTON_DPAD_LEFT,
+				KeyEvent.KEYCODE_DPAD_RIGHT to ControllerState.BUTTON_DPAD_RIGHT
+			) + mappings,
+			keyCodes.getValue(ControllerProfiles.Button.L2),
+			keyCodes.getValue(ControllerProfiles.Button.R2),
+			profile.stickDeadZone / 100f
+		)
 	}
 
 	private val sensorEventListener = object: SensorEventListener {
@@ -208,6 +227,8 @@ class StreamInput(val context: Context, val preferences: Preferences)
 	 */
 	fun onInputDevicesChanged()
 	{
+		// A controller's id can belong to another controller after reconnecting
+		inputProfiles.clear()
 		if(!motionActive)
 			return
 		stopMotion()
@@ -283,22 +304,23 @@ class StreamInput(val context: Context, val preferences: Preferences)
 
 		val keyCode = event.keyCode
 		val action = event.action == KeyEvent.ACTION_DOWN
+		val profile = inputProfile(event.deviceId)
 
 		// Check for L2/R2 (can be digital or analog, here we handle digital key event)
-		if (keyCode == mappingL2) {
+		if (keyCode != 0 && keyCode == profile.keyL2) {
 			keyControllerState.l2State = if(action) UByte.MAX_VALUE else 0U
 			rememberController(event)
 			controllerStateUpdated()
 			return true
 		}
-		if (keyCode == mappingR2) {
+		if (keyCode != 0 && keyCode == profile.keyR2) {
 			keyControllerState.r2State = if(action) UByte.MAX_VALUE else 0U
 			rememberController(event)
 			controllerStateUpdated()
 			return true
 		}
 
-		val buttonMask = buttonMappings[keyCode] ?: return false
+		val buttonMask = profile.buttonMappings[keyCode] ?: return false
 
 		keyControllerState.buttons = keyControllerState.buttons.run {
 			if(action) this or buttonMask else this and buttonMask.inv()
@@ -469,10 +491,25 @@ class StreamInput(val context: Context, val preferences: Preferences)
 				value
 		}
 
-		motionControllerState.leftX = event.getAxisValue(MotionEvent.AXIS_X).signedAxis()
-		motionControllerState.leftY = event.getAxisValue(MotionEvent.AXIS_Y).signedAxis()
-		motionControllerState.rightX = event.getAxisValue(layout.rightX).signedAxis()
-		motionControllerState.rightY = event.getAxisValue(layout.rightY).signedAxis()
+		// Ignores small movements around the center, scaling the rest to the whole range,
+		// for sticks that drift
+		val deadZone = inputProfile(event.deviceId).stickDeadZone
+		fun stick(x: Float, y: Float): Pair<Float, Float>
+		{
+			if(deadZone <= 0f)
+				return Pair(x, y)
+			val magnitude = hypot(x, y)
+			if(magnitude <= deadZone)
+				return Pair(0f, 0f)
+			val scale = ((magnitude - deadZone) / (1f - deadZone)).coerceAtMost(1f) / magnitude
+			return Pair(x * scale, y * scale)
+		}
+		val (leftX, leftY) = stick(event.getAxisValue(MotionEvent.AXIS_X), event.getAxisValue(MotionEvent.AXIS_Y))
+		val (rightX, rightY) = stick(event.getAxisValue(layout.rightX), event.getAxisValue(layout.rightY))
+		motionControllerState.leftX = leftX.signedAxis()
+		motionControllerState.leftY = leftY.signedAxis()
+		motionControllerState.rightX = rightX.signedAxis()
+		motionControllerState.rightY = rightY.signedAxis()
 		motionControllerState.l2State = triggerValue(layout.leftTriggers).unsignedAxis()
 		motionControllerState.r2State = triggerValue(layout.rightTriggers).unsignedAxis()
 		motionControllerState.buttons = motionControllerState.buttons.let {
@@ -508,19 +545,5 @@ class StreamInput(val context: Context, val preferences: Preferences)
 			intArrayOf(MotionEvent.AXIS_LTRIGGER, MotionEvent.AXIS_BRAKE),
 			intArrayOf(MotionEvent.AXIS_RTRIGGER, MotionEvent.AXIS_GAS)
 		)
-
-		private fun swapFaceButtons(buttons: UInt): UInt
-		{
-			fun swap(buttons: UInt, a: UInt, b: UInt): UInt
-			{
-				val rest = buttons and (a or b).inv()
-				return rest or
-						(if(buttons and a != 0U) b else 0U) or
-						(if(buttons and b != 0U) a else 0U)
-			}
-			return swap(
-				swap(buttons, ControllerState.BUTTON_CROSS, ControllerState.BUTTON_MOON),
-				ControllerState.BUTTON_BOX, ControllerState.BUTTON_PYRAMID)
-		}
 	}
 }

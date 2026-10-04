@@ -20,6 +20,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.*
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.metallic.chiaki.R
+import com.metallic.chiaki.common.ControllerProfiles
 import com.metallic.chiaki.common.Preferences
 import com.metallic.chiaki.common.isDesktopMode
 import com.metallic.chiaki.common.ext.viewModelFactory
@@ -540,8 +541,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.S)
 			return null
 		val device = viewModel.input.lastControllerDeviceId?.let { InputDevice.getDevice(it) }
-			?: InputDevice.getDeviceIds().asSequence().mapNotNull { InputDevice.getDevice(it) }
-				.firstOrNull { !it.isVirtual && it.sources and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD }
+			?: ControllerProfiles.connectedControllers().firstOrNull()
 			?: return null
 		val battery = device.batteryState
 		if(!battery.isPresent || battery.capacity.isNaN())
