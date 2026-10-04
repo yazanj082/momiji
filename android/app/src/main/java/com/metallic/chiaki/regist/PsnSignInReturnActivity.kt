@@ -10,6 +10,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.metallic.chiaki.R
 import com.metallic.chiaki.databinding.ActivityPsnSignInReturnBinding
 import com.metallic.chiaki.common.ext.fitSystemBars
+import com.metallic.chiaki.settings.SettingsActivity
 import kotlin.concurrent.thread
 
 /**
@@ -18,10 +19,17 @@ import kotlin.concurrent.thread
  */
 class PsnSignInReturnActivity: AppCompatActivity()
 {
+	companion object
+	{
+		const val EXTRA_PURPOSE = "purpose"
+	}
+
+	private val purpose get() = PsnSignIn.purposeOf(intent)
+
 	override fun onCreate(savedInstanceState: Bundle?)
 	{
 		super.onCreate(savedInstanceState)
-		val code = intent.data?.let { PsnAccountId.codeFromRedirect(it) }
+		val code = intent.data?.let { PsnAuth.codeFromRedirect(it) }
 		if(code == null)
 		{
 			Toast.makeText(this, R.string.psn_sign_in_not_finished, Toast.LENGTH_LONG).show()
@@ -31,37 +39,48 @@ class PsnSignInReturnActivity: AppCompatActivity()
 		val binding = ActivityPsnSignInReturnBinding.inflate(layoutInflater)
 		setContentView(binding.root)
 		binding.root.fitSystemBars()
+		binding.statusTextView.setText(PsnSignIn.fetchingText(purpose))
+		val purpose = purpose
 		thread {
-			val result = runCatching { PsnAccountId.fetch(code) }
+			val result = runCatching { PsnSignIn.finish(applicationContext, code, purpose) }
 			runOnUiThread {
 				if(isDestroyed)
 					return@runOnUiThread
 				result.fold(
-					onSuccess = { returnToRegist(it) },
+					onSuccess = { returnToApp(it, true) },
 					onFailure = { showError(it.message ?: it.toString()) })
 			}
 		}
 	}
 
-	/** Also closes the browser, which is above registration */
-	private fun returnToRegist(accountId: String?)
+	/** Also closes the browser, which is above the screen that started signing in */
+	private fun returnToApp(accountId: String?, success: Boolean)
 	{
-		startActivity(Intent(this, RegistActivity::class.java)
-			.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-			.also { if(accountId != null) it.putExtra(RegistActivity.EXTRA_PSN_ACCOUNT_ID, accountId) })
+		val intent = when(purpose)
+		{
+			PsnAuth.Purpose.REGISTRATION -> Intent(this, RegistActivity::class.java)
+				.also { if(accountId != null) it.putExtra(RegistActivity.EXTRA_PSN_ACCOUNT_ID, accountId) }
+			PsnAuth.Purpose.INTERNET_PLAY ->
+			{
+				if(success)
+					Toast.makeText(this, R.string.internet_play_signed_in_toast, Toast.LENGTH_LONG).show()
+				SettingsActivity.internetPlayIntent(this)
+			}
+		}
+		startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
 		finish()
 	}
 
 	private fun showError(message: String)
 	{
 		MaterialAlertDialogBuilder(this)
-			.setTitle(R.string.psn_sign_in_failed)
+			.setTitle(PsnSignIn.failedText(purpose))
 			.setMessage(message)
 			.setPositiveButton(R.string.action_try_again) { _, _ ->
-				PsnSignIn.openInBrowser(this)
+				PsnSignIn.openInBrowser(this, purpose)
 				finish()
 			}
-			.setNegativeButton(R.string.action_connect_cancel_connect) { _, _ -> returnToRegist(null) }
+			.setNegativeButton(R.string.action_connect_cancel_connect) { _, _ -> returnToApp(null, false) }
 			.setCancelable(false)
 			.show()
 	}

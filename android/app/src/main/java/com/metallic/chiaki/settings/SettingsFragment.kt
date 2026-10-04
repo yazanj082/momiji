@@ -18,6 +18,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.metallic.chiaki.R
 import com.metallic.chiaki.BuildConfig
 import com.metallic.chiaki.common.Preferences
+import com.metallic.chiaki.common.PsnAccount
 import com.metallic.chiaki.common.exportAndShareAllSettings
 import com.metallic.chiaki.common.ext.viewModelFactory
 import com.metallic.chiaki.common.getDatabase
@@ -199,6 +200,19 @@ class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 			.setMessage(getString(R.string.feedback_no_email_app, email, getString(R.string.issues_url)))
 			.setPositiveButton(android.R.string.ok, null)
 			.show()
+	}
+
+	override fun onResume()
+	{
+		super.onResume()
+		// Signing in or out happens on its own screen
+		val account = PsnAccount(requireContext())
+		preferenceScreen.findPreference<Preference>("internet_play")?.summary = when
+		{
+			!account.isSignedIn -> getString(R.string.preferences_internet_play_summary_off)
+			account.onlineId != null -> getString(R.string.preferences_internet_play_summary_on, account.onlineId)
+			else -> getString(R.string.internet_play_signed_in)
+		}
 	}
 
 	override fun onDestroy()

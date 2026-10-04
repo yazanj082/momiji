@@ -127,7 +127,7 @@ class RegistActivity: AppCompatActivity(), RevealActivity
 			startActivityForResult(Intent(this, PsnSignInActivity::class.java), REQUEST_PSN_SIGN_IN)
 			return
 		}
-		PsnSignIn.openInBrowser(this)
+		PsnSignIn.openInBrowser(this, PsnAuth.Purpose.REGISTRATION)
 		Toast.makeText(this, R.string.psn_sign_in_reminder, Toast.LENGTH_LONG).show()
 	}
 

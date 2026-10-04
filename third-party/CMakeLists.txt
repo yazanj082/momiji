@@ -81,6 +81,10 @@ if (NOT CHIAKI_IS_SWITCH)
 		set(BUILD_CURL_EXE OFF CACHE BOOL "" FORCE)
 		set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 		set(PICKY_COMPILER OFF CACHE BOOL "" FORCE)
+		# Android has no CA bundle file. Its system CA certificates are a directory of PEM files,
+		# which every version keeps here (from Android 14 on, a copy of the ones in the Conscrypt APEX).
+		set(CURL_CA_BUNDLE "none" CACHE STRING "" FORCE)
+		set(CURL_CA_PATH "/system/etc/security/cacerts" CACHE STRING "" FORCE)
 	endif()
 		find_package(PkgConfig QUIET)
 		if (PKG_CONFIG_FOUND)

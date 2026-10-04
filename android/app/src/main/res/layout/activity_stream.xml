@@ -38,6 +38,22 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"/>
 
+    <!-- The steps of connecting through PSN, which take a while -->
+    <TextView
+        android:id="@+id/connectingTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginTop="72dp"
+        android:maxWidth="360dp"
+        android:gravity="center"
+        android:paddingHorizontal="24dp"
+        android:shadowColor="#99000000"
+        android:shadowRadius="4"
+        android:textColor="#E6FFFFFF"
+        android:textSize="14sp"
+        android:visibility="gone" />
+
     <fragment
         android:id="@+id/controlsFragment"
         android:name="com.metallic.chiaki.touchcontrols.DefaultTouchControlsFragment"

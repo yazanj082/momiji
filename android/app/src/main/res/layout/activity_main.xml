@@ -102,6 +102,16 @@
             android:layout_marginTop="20dp"
             android:text="@string/action_discover_short"
             app:icon="@drawable/ic_discover_on" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/emptyInternetPlayButton"
+            style="@style/Widget.Material3.Button.TextButton.Icon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/preferences_internet_play_title"
+            android:visibility="gone"
+            app:icon="@drawable/ic_web" />
     </LinearLayout>
 
     <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton

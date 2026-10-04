@@ -11,15 +11,43 @@ import android.view.*
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.metallic.chiaki.common.LogManager
+import com.metallic.chiaki.common.PsnAccount
 import com.metallic.chiaki.lib.*
+import com.metallic.chiaki.regist.PsnAuth
+import java.io.IOException
+import kotlin.concurrent.thread
 
 sealed class StreamState
 object StreamStateIdle: StreamState()
 object StreamStateConnecting: StreamState()
+/** Connecting through PSN, which comes before the stream's own connection */
+data class StreamStatePsnConnecting(val step: PsnConnectStep): StreamState()
 object StreamStateConnected: StreamState()
 data class StreamStateCreateError(val error: CreateError): StreamState()
 data class StreamStateQuit(val reason: QuitReason, val reasonString: String?): StreamState()
 data class StreamStateLoginPinRequest(val pinIncorrect: Boolean): StreamState()
+data class StreamStatePsnError(val error: PsnConnectError, val errorCode: ErrorCode?): StreamState()
+
+enum class PsnConnectStep
+{
+	SIGNING_IN,
+	CREATING_SESSION,
+	WAKING_CONSOLE,
+	CONNECTING_CONSOLE
+}
+
+enum class PsnConnectError
+{
+	/** PSN wants a new sign-in, or there is none */
+	SIGN_IN,
+	/** This device can't reach PSN */
+	PSN_UNREACHABLE,
+	/** The console didn't join, so it may be off or offline, or have Remote Play off */
+	CONSOLE_NO_ANSWER,
+	/** Both are on PSN, but the networks between them don't let a direct connection through */
+	NETWORK_BLOCKED,
+	FAILED
+}
 
 class StreamSession(val connectInfo: ConnectInfo, val logManager: LogManager, val logVerbose: Boolean, val input: StreamInput)
 {
@@ -37,6 +65,12 @@ class StreamSession(val connectInfo: ConnectInfo, val logManager: LogManager, va
 	val cantDisplay: LiveData<Boolean> get() = _cantDisplay
 
 	private val mainHandler = Handler(Looper.getMainLooper())
+	private val psnLock = Any()
+	/** Counts the connections through PSN, so that one that was superseded stops. Guarded by psnLock. */
+	private var psnAttempt = 0
+	/** The connection through PSN until a session takes it over. Guarded by psnLock. */
+	private var psnConnection: HolepunchConnection? = null
+	private var psnConnecting = false
 	private val dualSenseFeedback = if(connectInfo.enableDualSense) DualSenseFeedback() else null
 	private val controllerLights = if(connectInfo.enableDualSense && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) ControllerLights() else null
 	private var consoleRumble = RumbleEvent(0U, 0U)
@@ -65,8 +99,20 @@ class StreamSession(val connectInfo: ConnectInfo, val logManager: LogManager, va
 
 	fun shutdown()
 	{
-		session?.stop()
-		session?.dispose()
+		synchronized(psnLock) {
+			psnAttempt++
+			psnConnection?.cancel()
+			psnConnection = null
+		}
+		psnConnecting = false
+		session?.let {
+			it.stop()
+			// Ending the session on PSN takes a few seconds
+			if(connectInfo.psnConsoleUid != null)
+				thread(name = "StreamSession dispose") { it.dispose() }
+			else
+				it.dispose()
+		}
 		session = null
 		_state.value = StreamStateIdle
 		dualSenseFeedback?.reset()
@@ -125,24 +171,151 @@ class StreamSession(val connectInfo: ConnectInfo, val logManager: LogManager, va
 
 	fun resume()
 	{
-		if(session != null)
+		if(session != null || psnConnecting)
 			return
+		val psnConsoleUid = connectInfo.psnConsoleUid
+		if(psnConsoleUid != null)
+		{
+			connectPsn(psnConsoleUid)
+			return
+		}
 		try
 		{
-			val session = Session(connectInfo, logManager.createNewFile().file.absolutePath, logVerbose)
-			_state.value = StreamStateConnecting
-			session.eventCallback = this::eventCallback
-			applyAudioRouting(session)
-			session.start()
-			val surface = surface
-			if(surface != null)
-				session.setSurface(surface)
-			this.session = session
+			startSession(Session(connectInfo, logManager.createNewFile().file.absolutePath, logVerbose))
 		}
 		catch(e: CreateError)
 		{
 			_state.value = StreamStateCreateError(e)
 		}
+	}
+
+	private fun startSession(session: Session)
+	{
+		_state.value = StreamStateConnecting
+		session.eventCallback = this::eventCallback
+		applyAudioRouting(session)
+		session.start()
+		val surface = surface
+		if(surface != null)
+			session.setSurface(surface)
+		this.session = session
+	}
+
+	private fun isCurrentPsnAttempt(attempt: Int) = synchronized(psnLock) { attempt == psnAttempt }
+
+	/** The steps block for seconds each, so they run on their own thread */
+	private fun connectPsn(consoleUid: ByteArray)
+	{
+		val attempt = synchronized(psnLock) { ++psnAttempt }
+		psnConnecting = true
+		_state.value = StreamStatePsnConnecting(PsnConnectStep.SIGNING_IN)
+		val logFile = logManager.createNewFile().file.absolutePath
+		val context = input.context.applicationContext
+		thread(name = "StreamSession PSN") {
+			val error = connectPsnSteps(attempt, consoleUid, PsnAccount(context), logFile) ?: return@thread
+			mainHandler.post {
+				if(!isCurrentPsnAttempt(attempt))
+					return@post
+				psnConnecting = false
+				_state.value = StreamStatePsnError(error.first, error.second)
+			}
+		}
+	}
+
+	/** @return why connecting failed, or null if it worked or was superseded */
+	private fun connectPsnSteps(attempt: Int, consoleUid: ByteArray, account: PsnAccount, logFile: String): Pair<PsnConnectError, ErrorCode?>?
+	{
+		val token: String
+		val accountId: ByteArray
+		try
+		{
+			token = account.accessToken()
+			accountId = account.accountId ?: return PsnConnectError.SIGN_IN to null
+		}
+		catch(e: PsnAuth.SignInRejectedException)
+		{
+			return PsnConnectError.SIGN_IN to null
+		}
+		catch(e: IOException)
+		{
+			Log.e(TAG, "Getting the PSN token failed", e)
+			return PsnConnectError.PSN_UNREACHABLE to null
+		}
+
+		val connection = try
+		{
+			HolepunchConnection(token, logFile, logVerbose)
+		}
+		catch(e: CreateError)
+		{
+			return PsnConnectError.FAILED to e.errorCode
+		}
+		synchronized(psnLock) {
+			if(attempt == psnAttempt)
+				psnConnection = connection
+			else
+				connection.cancel()
+		}
+
+		val steps = listOf<Pair<PsnConnectStep, () -> ErrorCode>>(
+			PsnConnectStep.CREATING_SESSION to { connection.createSession() },
+			PsnConnectStep.WAKING_CONSOLE to { connection.startSession(consoleUid, connectInfo.ps5) },
+			PsnConnectStep.CONNECTING_CONSOLE to { connection.punchHole() })
+		var failedStep: PsnConnectStep? = null
+		var errorCode = ErrorCode(0)
+		for((step, action) in steps)
+		{
+			mainHandler.post {
+				if(isCurrentPsnAttempt(attempt))
+					_state.value = StreamStatePsnConnecting(step)
+			}
+			errorCode = action()
+			if(!errorCode.isSuccess)
+			{
+				failedStep = step
+				break
+			}
+		}
+		synchronized(psnLock) {
+			if(psnConnection === connection)
+				psnConnection = null
+		}
+
+		if(failedStep == null)
+		{
+			val session = try
+			{
+				Session(connectInfo, null, logVerbose, connection, accountId)
+			}
+			catch(e: CreateError)
+			{
+				// Also when it was canceled meanwhile
+				return if(isCurrentPsnAttempt(attempt)) PsnConnectError.FAILED to e.errorCode else null
+			}
+			mainHandler.post {
+				if(isCurrentPsnAttempt(attempt) && this.session == null)
+				{
+					psnConnecting = false
+					startSession(session)
+				}
+				else
+					thread(name = "StreamSession dispose") { session.dispose() }
+			}
+			return null
+		}
+
+		Log.e(TAG, "Connecting through PSN failed at $failedStep: $errorCode")
+		// Ends the session on PSN, which takes a few seconds
+		connection.free()
+		if(!isCurrentPsnAttempt(attempt) || errorCode.value == ErrorCode.CANCELED)
+			return null
+		return when
+		{
+			failedStep == PsnConnectStep.CREATING_SESSION -> PsnConnectError.PSN_UNREACHABLE
+			errorCode.value == ErrorCode.HOST_DOWN -> PsnConnectError.CONSOLE_NO_ANSWER
+			errorCode.value == ErrorCode.HOST_UNREACH -> PsnConnectError.NETWORK_BLOCKED
+			else -> PsnConnectError.FAILED
+		} to errorCode
 	}
 
 	/**
@@ -291,6 +464,7 @@ class StreamSession(val connectInfo: ConnectInfo, val logManager: LogManager, va
 
 	companion object
 	{
+		private const val TAG = "StreamSession"
 		private const val HAPTICS_TIMEOUT_MS = 100L
 		// CHIAKI_QUIT_REASON_SESSION_REQUEST_RP_IN_USE
 		private const val QUIT_REASON_RP_IN_USE = 4

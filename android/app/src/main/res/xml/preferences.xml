@@ -13,6 +13,13 @@
             app:fragment="com.metallic.chiaki.settings.SettingsRegisteredHostsFragment"
             app:icon="@drawable/ic_console_simple"/>
 
+        <Preference
+            app:key="internet_play"
+            app:title="@string/preferences_internet_play_title"
+            app:summary="@string/preferences_internet_play_summary_off"
+            app:fragment="com.metallic.chiaki.settings.SettingsInternetPlayFragment"
+            app:icon="@drawable/ic_web" />
+
         <SwitchPreference
             app:key="@string/preferences_home_screen_key"
             app:title="@string/preferences_home_screen_title"

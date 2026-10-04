@@ -21,14 +21,20 @@ import com.metallic.chiaki.common.ext.fitSystemBars
 import kotlin.concurrent.thread
 
 /**
- * Sign-in for devices without a browser, like TV boxes. Nothing of the session is kept.
+ * Sign-in for devices without a browser, like TV boxes. Nothing of the browser session is kept.
+ * For registration, the result has the account id. For playing away from home, the sign-in
+ * is kept in [com.metallic.chiaki.common.PsnAccount] when the result is RESULT_OK.
  */
 class PsnSignInActivity: AppCompatActivity()
 {
 	companion object
 	{
 		const val EXTRA_ACCOUNT_ID = "account_id"
+		/** A [PsnAuth.Purpose] name, registration if missing */
+		const val EXTRA_PURPOSE = PsnSignInReturnActivity.EXTRA_PURPOSE
 	}
+
+	private val purpose get() = PsnSignIn.purposeOf(intent)
 
 	private lateinit var binding: ActivityPsnSignInBinding
 	private var codeReceived = false
@@ -41,6 +47,7 @@ class PsnSignInActivity: AppCompatActivity()
 		setContentView(binding.root)
 		binding.root.fitSystemBars(keyboard = true)
 		binding.toolbar.setNavigationOnClickListener { finish() }
+		binding.statusTextView.setText(PsnSignIn.fetchingText(purpose))
 
 		clearSession()
 		binding.webView.settings.javaScriptEnabled = true
@@ -78,7 +85,7 @@ class PsnSignInActivity: AppCompatActivity()
 		codeReceived = false
 		binding.statusTextView.visibility = View.GONE
 		binding.webView.visibility = View.VISIBLE
-		binding.webView.loadUrl(PsnAccountId.LOGIN_URL)
+		binding.webView.loadUrl(PsnAuth.loginUrl(purpose))
 	}
 
 	private fun clearSession()
@@ -92,7 +99,7 @@ class PsnSignInActivity: AppCompatActivity()
 	 */
 	private fun handleUrl(url: Uri): Boolean
 	{
-		if(!url.toString().startsWith(PsnAccountId.REDIRECT_URI))
+		if(!url.toString().startsWith(PsnAuth.REDIRECT_URI))
 			return false
 		if(codeReceived)
 			return true
@@ -100,20 +107,21 @@ class PsnSignInActivity: AppCompatActivity()
 		binding.webView.visibility = View.INVISIBLE
 		binding.statusTextView.visibility = View.VISIBLE
 		binding.progressIndicator.visibility = View.VISIBLE
-		val code = PsnAccountId.codeFromRedirect(url)
+		val code = PsnAuth.codeFromRedirect(url)
 		if(code == null)
 		{
 			showError(getString(R.string.psn_sign_in_no_code))
 			return true
 		}
+		val purpose = purpose
 		thread {
-			val result = runCatching { PsnAccountId.fetch(code) }
+			val result = runCatching { PsnSignIn.finish(applicationContext, code, purpose) }
 			runOnUiThread {
 				if(isDestroyed)
 					return@runOnUiThread
 				result.fold(
 					onSuccess = { accountId ->
-						setResult(RESULT_OK, Intent().putExtra(EXTRA_ACCOUNT_ID, accountId))
+						setResult(RESULT_OK, Intent().also { if(accountId != null) it.putExtra(EXTRA_ACCOUNT_ID, accountId) })
 						finish()
 					},
 					onFailure = { showError(it.message ?: it.toString()) })
@@ -126,7 +134,7 @@ class PsnSignInActivity: AppCompatActivity()
 	{
 		binding.progressIndicator.visibility = View.GONE
 		MaterialAlertDialogBuilder(this)
-			.setTitle(R.string.psn_sign_in_failed)
+			.setTitle(PsnSignIn.failedText(purpose))
 			.setMessage(message)
 			.setPositiveButton(R.string.action_try_again) { _, _ -> startSignIn() }
 			.setNegativeButton(R.string.action_connect_cancel_connect) { _, _ -> finish() }

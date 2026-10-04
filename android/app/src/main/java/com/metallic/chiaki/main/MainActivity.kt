@@ -78,9 +78,11 @@ class MainActivity : AppCompatActivity()
 
 		binding.floatingActionButton.setOnClickListener { showAddConsoleSheet() }
 		binding.emptyDiscoverButton.setOnClickListener { viewModel.discoveryManager.active = true }
+		binding.emptyInternetPlayButton.setOnClickListener { startActivity(SettingsActivity.internetPlayIntent(this)) }
 
-		viewModel = ViewModelProvider(this, viewModelFactory { MainViewModel(getDatabase(this), Preferences(this)) })
-			.get(MainViewModel::class.java)
+		viewModel = ViewModelProvider(this, viewModelFactory {
+			MainViewModel(getDatabase(this), Preferences(this), PsnAccount(this), getString(R.string.display_host_main_ps4))
+		}).get(MainViewModel::class.java)
 
 		val hostsAdapter = DisplayHostRecyclerViewAdapter(this::hostTriggered, this::wakeupHost, this::putInRestMode,
 			this::registerHostAgain, this::removeRegistration, this::editHost, this::deleteHost)
@@ -123,6 +125,22 @@ class MainActivity : AppCompatActivity()
 			discoveryMenuItem?.let { updateDiscoveryMenuItem(it, active) }
 			updateEmptyInfo()
 		})
+		viewModel.hasRegisteredHosts.observe(this, Observer { updateEmptyInfo() })
+		viewModel.psnSignInExpired.observe(this, Observer { expired ->
+			if(expired)
+				showPsnSignInExpired()
+		})
+	}
+
+	private fun showPsnSignInExpired()
+	{
+		viewModel.psnSignInExpiredShown()
+		MaterialAlertDialogBuilder(this)
+			.setTitle(R.string.internet_play_sign_in_expired_title)
+			.setMessage(R.string.internet_play_sign_in_expired)
+			.setPositiveButton(R.string.internet_play_sign_in) { _, _ -> startActivity(SettingsActivity.internetPlayIntent(this)) }
+			.setNegativeButton(R.string.action_not_now, null)
+			.show()
 	}
 
 	private fun updateEmptyInfo()
@@ -139,6 +157,9 @@ class MainActivity : AppCompatActivity()
 				else -> R.string.display_hosts_empty_discovery_on_info
 			})
 			binding.emptyDiscoverButton.visibility = if(discoveryActive) View.GONE else View.VISIBLE
+			// Registered consoles that aren't here can be played through PSN
+			binding.emptyInternetPlayButton.visibility =
+				if(viewModel.hasRegisteredHosts.value == true && !viewModel.psnAccount.isSignedIn) View.VISIBLE else View.GONE
 		}
 		else
 			binding.emptyInfoLayout.visibility = View.GONE
@@ -197,6 +218,9 @@ class MainActivity : AppCompatActivity()
 	{
 		super.onStart()
 		viewModel.discoveryManager.resume()
+		// Also after signing in or out
+		viewModel.refreshPsnConsoles()
+		updateEmptyInfo()
 		// The settings may have changed which menu items apply
 		invalidateOptionsMenu()
 	}
@@ -274,28 +298,38 @@ class MainActivity : AppCompatActivity()
 		}
 	}
 
+	private fun startStream(connectInfo: ConnectInfo)
+	{
+		Intent(this, StreamActivity::class.java).let {
+			it.putExtra(StreamActivity.EXTRA_CONNECT_INFO, connectInfo)
+			// Empty bounds open the stream full screen in Samsung DeX, without the window's title bar.
+			// Launch bounds only apply to new tasks, so the stream gets its own window there.
+			val options = if(isSamsungDex())
+			{
+				it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+				ActivityOptions.makeBasic().setLaunchBounds(Rect()).toBundle()
+			}
+			else
+				null
+			startActivity(it, options)
+		}
+	}
+
 	private fun hostTriggered(host: DisplayHost)
 	{
 		val registeredHost = host.registeredHost
-		if(registeredHost != null)
+		if(host is PsnDisplayHost)
+		{
+			val preferences = Preferences(this)
+			startStream(ConnectInfo(host.isPS5, host.host, registeredHost!!.rpRegistKey, registeredHost.rpKey, preferences.videoProfile,
+				enableDualSense = host.isPS5 && preferences.dualSenseEnabled, psnConsoleUid = host.consoleUid))
+		}
+		else if(registeredHost != null)
 		{
 			fun connect() {
 				val preferences = Preferences(this)
-				val connectInfo = ConnectInfo(host.isPS5, host.host, registeredHost.rpRegistKey, registeredHost.rpKey, preferences.videoProfile,
-					enableDualSense = host.isPS5 && preferences.dualSenseEnabled)
-				Intent(this, StreamActivity::class.java).let {
-					it.putExtra(StreamActivity.EXTRA_CONNECT_INFO, connectInfo)
-					// Empty bounds open the stream full screen in Samsung DeX, without the window's title bar.
-					// Launch bounds only apply to new tasks, so the stream gets its own window there.
-					val options = if(isSamsungDex())
-					{
-						it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-						ActivityOptions.makeBasic().setLaunchBounds(Rect()).toBundle()
-					}
-					else
-						null
-					startActivity(it, options)
-				}
+				startStream(ConnectInfo(host.isPS5, host.host, registeredHost.rpRegistKey, registeredHost.rpKey, preferences.videoProfile,
+					enableDualSense = host.isPS5 && preferences.dualSenseEnabled))
 			}
 
 			if(host is DiscoveredDisplayHost && host.discoveredHost.state == DiscoveryHost.State.STANDBY)

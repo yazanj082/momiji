@@ -30,6 +30,7 @@ import com.metallic.chiaki.lib.ConnectVideoProfile
 import com.metallic.chiaki.session.*
 import com.metallic.chiaki.touchcontrols.DefaultTouchControlsFragment
 import com.metallic.chiaki.touchcontrols.TouchControlsFragment
+import com.metallic.chiaki.settings.SettingsActivity
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.addTo
 import kotlin.math.roundToInt
@@ -39,6 +40,7 @@ private object StreamQuitDialog: DialogContents()
 private object CreateErrorDialog: DialogContents()
 private object PinRequestDialog: DialogContents()
 private object StreamMenuDialog: DialogContents()
+private object PsnErrorDialog: DialogContents()
 
 class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListener
 {
@@ -576,7 +578,15 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 
 	private fun stateChanged(state: StreamState)
 	{
-		binding.progressBar.visibility = if(state == StreamStateConnecting) View.VISIBLE else View.GONE
+		binding.progressBar.visibility = if(state == StreamStateConnecting || state is StreamStatePsnConnecting) View.VISIBLE else View.GONE
+		binding.connectingTextView.isVisible = state is StreamStatePsnConnecting
+		if(state is StreamStatePsnConnecting)
+			binding.connectingTextView.setText(when(state.step)
+			{
+				PsnConnectStep.SIGNING_IN, PsnConnectStep.CREATING_SESSION -> R.string.psn_connect_creating_session
+				PsnConnectStep.WAKING_CONSOLE -> R.string.psn_connect_waking_console
+				PsnConnectStep.CONNECTING_CONSOLE -> R.string.psn_connect_connecting_console
+			})
 
 		if(state == StreamStateConnected && !streamMenuHintShown && isControllerConnected())
 		{
@@ -599,6 +609,8 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 									+ (if(reasonStr != null) "\n$reasonStr" else ""))
 							.setPositiveButton(R.string.action_reconnect) { _, _ ->
 								dialog = null
+								// So that the dialog shows again if the new connection quits as well
+								dialogContents = null
 								reconnect()
 							}
 							.setOnCancelListener {
@@ -669,8 +681,50 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 					dialog.show()
 				}
 			}
+			is StreamStatePsnError ->
+			{
+				if(dialogContents != PsnErrorDialog)
+				{
+					dialog?.dismiss()
+					val message = when(state.error)
+					{
+						PsnConnectError.SIGN_IN -> R.string.psn_connect_error_sign_in
+						PsnConnectError.PSN_UNREACHABLE -> R.string.psn_connect_error_psn_unreachable
+						PsnConnectError.CONSOLE_NO_ANSWER -> R.string.psn_connect_error_console_no_answer
+						PsnConnectError.NETWORK_BLOCKED -> R.string.psn_connect_error_network_blocked
+						PsnConnectError.FAILED -> R.string.psn_connect_error_failed
+					}
+					val builder = MaterialAlertDialogBuilder(this)
+						.setTitle(R.string.psn_connect_error_title)
+						.setMessage(getString(message) + (state.errorCode?.let { "\n\n(${it})" } ?: ""))
+						.setOnCancelListener {
+							dialog = null
+							finish()
+						}
+						.setNegativeButton(R.string.action_quit_session) { _, _ ->
+							dialog = null
+							finish()
+						}
+					if(state.error == PsnConnectError.SIGN_IN)
+						builder.setPositiveButton(R.string.internet_play_sign_in) { _, _ ->
+							dialog = null
+							startActivity(SettingsActivity.internetPlayIntent(this))
+							finish()
+						}
+					else
+						builder.setPositiveButton(R.string.action_try_again) { _, _ ->
+							dialog = null
+							dialogContents = null
+							reconnect()
+						}
+					val dialog = builder.create()
+					dialogContents = PsnErrorDialog
+					dialog.show()
+					this.dialog = dialog
+				}
+			}
 			// These states don't need special handling
-			StreamStateIdle, StreamStateConnecting, StreamStateConnected -> { }
+			StreamStateIdle, StreamStateConnecting, is StreamStatePsnConnecting, StreamStateConnected -> { }
 		}
 	}
 

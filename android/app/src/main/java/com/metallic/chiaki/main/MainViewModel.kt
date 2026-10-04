@@ -2,19 +2,46 @@
 
 package com.metallic.chiaki.main
 
+import android.os.SystemClock
+import android.util.Log
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.metallic.chiaki.common.*
 import com.metallic.chiaki.common.ext.toLiveData
 import com.metallic.chiaki.discovery.DiscoveryManager
 import com.metallic.chiaki.discovery.serverMac
+import com.metallic.chiaki.lib.DiscoveryHost
+import com.metallic.chiaki.lib.HolepunchDevice
+import com.metallic.chiaki.regist.PsnAuth
+import io.reactivex.Observable
+import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.disposables.Disposable
 import io.reactivex.rxkotlin.Observables
 import io.reactivex.rxkotlin.addTo
 import io.reactivex.schedulers.Schedulers
+import io.reactivex.subjects.BehaviorSubject
+import java.util.Optional
+import java.util.concurrent.TimeUnit
 
-class MainViewModel(val database: AppDatabase, val preferences: Preferences): ViewModel()
+/**
+ * @param mainPs4Name the name for the PS4 that PSN connects to, when more than one is registered
+ */
+class MainViewModel(val database: AppDatabase, val preferences: Preferences, val psnAccount: PsnAccount, private val mainPs4Name: String): ViewModel()
 {
+	companion object
+	{
+		private const val TAG = "MainViewModel"
+		/** Discovery finds consoles at home in about a second, so PSN doesn't offer them meanwhile */
+		private const val LOCAL_SEARCH_MS = 3000L
+		private const val PSN_REFRESH_INTERVAL_MS = 60 * 1000L
+		private const val PSN_LIST_RETRIES = 2L
+		/** PSN tells only the main PS4 of an account, which it knows by this id */
+		private val MAIN_PS4_UID = ByteArray(32) { 'A'.code.toByte() }
+	}
+
 	private val disposable = CompositeDisposable()
 
 	val discoveryManager = DiscoveryManager().also {
@@ -25,11 +52,26 @@ class MainViewModel(val database: AppDatabase, val preferences: Preferences): Vi
 			.addTo(disposable)
 	}
 
+	/** The consoles of the PSN account, empty if not signed in or listing them failed */
+	private val psnDevices = BehaviorSubject.createDefault(Optional.empty<List<HolepunchDevice>>())
+	private val localSearchDone = BehaviorSubject.createDefault(false).also { subject ->
+		Observable.timer(LOCAL_SEARCH_MS, TimeUnit.MILLISECONDS)
+			.subscribe { subject.onNext(true) }
+			.addTo(disposable)
+	}
+	private var psnRefresh: Disposable? = null
+	private var psnRefreshedAtMs: Long? = null
+
+	private val _psnSignInExpired = MutableLiveData(false)
+	/** PSN wants a new sign-in for playing away from home */
+	val psnSignInExpired: LiveData<Boolean> get() = _psnSignInExpired
+
 	val displayHosts = Observables.combineLatest(
 			database.manualHostDao().getAll().toObservable(),
 			database.registeredHostDao().getAll().toObservable(),
-			discoveryManager.discoveredHosts)
-			{ manualHosts, registeredHosts, discoveredHosts ->
+			discoveryManager.discoveredHosts,
+			Observables.combineLatest(psnDevices, localSearchDone) { devices, done -> if(done) devices else Optional.empty() })
+			{ manualHosts, registeredHosts, discoveredHosts, psnDevices ->
 				val macRegisteredHosts = registeredHosts.associateBy { it.serverMac }
 				val idRegisteredHosts = registeredHosts.associateBy { it.id }
 				discoveredHosts.map {
@@ -37,11 +79,83 @@ class MainViewModel(val database: AppDatabase, val preferences: Preferences): Vi
 				} +
 				manualHosts.map {
 					ManualDisplayHost(it.registeredHost?.let { id -> idRegisteredHosts[id] }, it)
-				}
+				} +
+				(if(psnDevices.isPresent) psnDisplayHosts(registeredHosts, discoveredHosts, psnDevices.get()) else listOf())
 			}
 			.toLiveData()
 
 	val discoveryActive = discoveryManager.discoveryActive.toLiveData()
+
+	val hasRegisteredHosts = database.registeredHostDao().count().map { it > 0 }.toLiveData()
+
+	/**
+	 * The registered consoles that discovery doesn't find here but PSN can reach, matched by name.
+	 * With one PS5 on each side, the names don't have to match, as the console may have been renamed.
+	 */
+	private fun psnDisplayHosts(registeredHosts: List<RegisteredHost>, discoveredHosts: List<DiscoveryHost>, devices: List<HolepunchDevice>): List<PsnDisplayHost>
+	{
+		val discoveredMacs = discoveredHosts.mapNotNull { it.serverMac }.toSet()
+		val discoveredNames = discoveredHosts.mapNotNull { it.hostName }.toSet()
+		// Registering again adds another registration of the same console
+		val registered = registeredHosts.sortedByDescending { it.id }.distinctBy { it.serverMac }
+		val registeredPS5 = registered.filter { it.target.isPS5 }
+		val enabledPS5 = devices.filter { it.ps5 && it.remotePlayEnabled }
+		val hosts = enabledPS5.mapNotNull { device ->
+			val registeredHost = registeredPS5.firstOrNull { it.serverNickname == device.asciiName || it.serverNickname == device.name }
+				?: registeredPS5.singleOrNull()?.takeIf { enabledPS5.size == 1 }
+				?: return@mapNotNull null
+			if(registeredHost.serverMac in discoveredMacs || device.asciiName in discoveredNames)
+				return@mapNotNull null
+			PsnDisplayHost(registeredHost, device.name, device.uid, true)
+		}
+		val registeredPS4 = registered.filter { !it.target.isPS5 }
+		val ps4 = registeredPS4.firstOrNull()
+			?.takeIf { registeredPS4.none { it.serverMac in discoveredMacs } }
+			?.let { PsnDisplayHost(it, (if(registeredPS4.size == 1) it.serverNickname else null) ?: mainPs4Name, MAIN_PS4_UID, false) }
+		return hosts + listOfNotNull(ps4)
+	}
+
+	/**
+	 * Lists the consoles of the PSN account again, unless that was just done.
+	 * Listing them also shows whether Remote Play is on for each.
+	 */
+	fun refreshPsnConsoles()
+	{
+		if(!psnAccount.isSignedIn)
+		{
+			psnRefresh?.dispose()
+			psnRefreshedAtMs = null
+			psnDevices.onNext(Optional.empty())
+			return
+		}
+		if(psnRefresh?.isDisposed == false)
+			return
+		val refreshedAt = psnRefreshedAtMs
+		if(refreshedAt != null && SystemClock.elapsedRealtime() - refreshedAt < PSN_REFRESH_INTERVAL_MS)
+			return
+		psnRefresh = Single.fromCallable { HolepunchDevice.list(psnAccount.accessToken(), true) }
+			.retry(PSN_LIST_RETRIES) { it !is PsnAuth.SignInRejectedException }
+			.subscribeOn(Schedulers.io())
+			.observeOn(AndroidSchedulers.mainThread())
+			.subscribe({ devices ->
+				psnRefreshedAtMs = SystemClock.elapsedRealtime()
+				Log.i(TAG, "Consoles on PSN: ${devices.joinToString { "${it.name} (Remote Play ${if(it.remotePlayEnabled) "on" else "off"})" }}")
+				psnDevices.onNext(Optional.of(devices))
+			}, { error ->
+				Log.e(TAG, "Listing the consoles on PSN failed", error)
+				if(error is PsnAuth.SignInRejectedException)
+				{
+					psnDevices.onNext(Optional.empty())
+					_psnSignInExpired.value = true
+				}
+			})
+			.addTo(disposable)
+	}
+
+	fun psnSignInExpiredShown()
+	{
+		_psnSignInExpired.value = false
+	}
 
 	/** Removes all registrations of the console, so consoles added by IP address are no longer linked to it */
 	fun removeRegistration(registeredHost: RegisteredHost)

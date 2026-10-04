@@ -2,6 +2,8 @@
 
 package com.metallic.chiaki.settings
 
+import android.content.Context
+import android.content.Intent
 import android.content.res.Resources
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
@@ -19,6 +21,16 @@ interface TitleFragment
 
 class SettingsActivity: AppCompatActivity(), PreferenceFragmentCompat.OnPreferenceStartFragmentCallback
 {
+	companion object
+	{
+		private const val EXTRA_SCREEN = "screen"
+		private const val SCREEN_INTERNET_PLAY = "internet_play"
+
+		/** Opens playing away from home by itself, so that Back leaves the settings */
+		fun internetPlayIntent(context: Context) =
+			Intent(context, SettingsActivity::class.java).putExtra(EXTRA_SCREEN, SCREEN_INTERNET_PLAY)
+	}
+
 	private lateinit var binding: ActivitySettingsBinding
 
 	override fun onCreate(savedInstanceState: Bundle?)
@@ -31,8 +43,8 @@ class SettingsActivity: AppCompatActivity(), PreferenceFragmentCompat.OnPreferen
 		setSupportActionBar(binding.toolbar)
 		binding.toolbar.setNavigationOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
-		val rootFragment = SettingsFragment()
-		replaceFragment(rootFragment, false)
+		val rootFragment: TitleFragment = if(intent.getStringExtra(EXTRA_SCREEN) == SCREEN_INTERNET_PLAY) SettingsInternetPlayFragment() else SettingsFragment()
+		replaceFragment(rootFragment as Fragment, false)
 		supportFragmentManager.addOnBackStackChangedListener {
 			val titleFragment = supportFragmentManager.findFragmentById(R.id.settingsFragment) as? TitleFragment ?: return@addOnBackStackChangedListener
 			binding.titleTextView.text = titleFragment.getTitle(resources)
@@ -48,6 +60,10 @@ class SettingsActivity: AppCompatActivity(), PreferenceFragmentCompat.OnPreferen
 		}
 		SettingsControllersFragment::class.java.canonicalName -> {
 			replaceFragment(SettingsControllersFragment(), true)
+			true
+		}
+		SettingsInternetPlayFragment::class.java.canonicalName -> {
+			replaceFragment(SettingsInternetPlayFragment(), true)
 			true
 		}
 		SettingsControllerFragment::class.java.canonicalName -> {

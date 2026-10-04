@@ -16,6 +16,7 @@ import com.metallic.chiaki.R
 import com.metallic.chiaki.common.DiscoveredDisplayHost
 import com.metallic.chiaki.common.DisplayHost
 import com.metallic.chiaki.common.ManualDisplayHost
+import com.metallic.chiaki.common.PsnDisplayHost
 import com.metallic.chiaki.common.ext.inflate
 import com.metallic.chiaki.databinding.ItemDisplayHostBinding
 import com.metallic.chiaki.lib.DiscoveryHost
@@ -66,6 +67,7 @@ class DisplayHostRecyclerViewAdapter(
 			it.hostTextView.text = when
 			{
 				consoleType == null -> context.getString(R.string.display_host_not_registered)
+				host is PsnDisplayHost -> context.getString(R.string.display_host_details, consoleType, context.getString(R.string.display_host_psn))
 				name == host.host -> consoleType
 				else -> context.getString(R.string.display_host_details, consoleType, host.host)
 			}
@@ -73,10 +75,11 @@ class DisplayHostRecyclerViewAdapter(
 			it.bottomInfoTextView.isVisible = runningApp != null
 			it.bottomInfoTextView.text = runningApp?.let { app -> context.getString(R.string.display_host_playing, app) }
 
-			val (statusText, statusColor, artBackground) = when(state)
+			val (statusText, statusColor, artBackground) = when
 			{
-				DiscoveryHost.State.READY -> Triple(R.string.display_host_state_ready, R.color.state_ready, R.drawable.console_art_ready)
-				DiscoveryHost.State.STANDBY -> Triple(R.string.display_host_state_standby, R.color.state_standby, R.drawable.console_art_standby)
+				state == DiscoveryHost.State.READY -> Triple(R.string.display_host_state_ready, R.color.state_ready, R.drawable.console_art_ready)
+				state == DiscoveryHost.State.STANDBY -> Triple(R.string.display_host_state_standby, R.color.state_standby, R.drawable.console_art_standby)
+				host is PsnDisplayHost -> Triple(R.string.display_host_state_away, R.color.state_unknown, R.drawable.console_art_unknown)
 				else -> Triple(R.string.display_host_state_manual, R.color.state_unknown, R.drawable.console_art_unknown)
 			}
 			it.statusTextView.setText(statusText)
@@ -101,7 +104,8 @@ class DisplayHostRecyclerViewAdapter(
 			it.primaryActionButton.setIconResource(actionIcon)
 			it.root.setOnClickListener { clickCallback(host) }
 
-			val registered = host.isRegistered
+			// PSN wakes a console up by itself, and its registration has its own card at home
+			val registered = host.isRegistered && host !is PsnDisplayHost
 			val canEditDelete = host is ManualDisplayHost
 			if(registered || canEditDelete)
 			{

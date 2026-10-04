@@ -71,7 +71,9 @@ data class ConnectInfo(
 	val morning: ByteArray,
 	val videoProfile: ConnectVideoProfile,
 	/** Makes the console send adaptive trigger effects and haptics for a DualSense */
-	val enableDualSense: Boolean = false
+	val enableDualSense: Boolean = false,
+	/** Connects through PSN to the console with this id instead of to host, see [HolepunchDevice.uid] */
+	val psnConsoleUid: ByteArray? = null
 ): Parcelable
 
 private class ChiakiNative
@@ -87,7 +89,8 @@ private class ChiakiNative
 		@JvmStatic external fun quitReasonToString(value: Int): String
 		@JvmStatic external fun quitReasonIsError(value: Int): Boolean
 		@JvmStatic external fun videoProfilePreset(resolutionPreset: Int, fpsPreset: Int, codec: Codec): ConnectVideoProfile
-		@JvmStatic external fun sessionCreate(result: CreateResult, connectInfo: ConnectInfo, logFile: String?, logVerbose: Boolean, javaSession: Session)
+		@JvmStatic external fun sessionCreate(result: CreateResult, connectInfo: ConnectInfo, logFile: String?, logVerbose: Boolean, javaSession: Session,
+			holepunch: Long, psnAccountId: ByteArray?)
 		@JvmStatic external fun sessionFree(ptr: Long)
 		@JvmStatic external fun sessionStart(ptr: Long): Int
 		@JvmStatic external fun sessionStop(ptr: Long): Int
@@ -100,6 +103,13 @@ private class ChiakiNative
 		@JvmStatic external fun sessionSetLoginPin(ptr: Long, pin: String)
 		@JvmStatic external fun sessionGotoBed(ptr: Long): Int
 		@JvmStatic external fun sessionGetStats(ptr: Long, stats: FloatArray)
+		@JvmStatic external fun holepunchListDevices(result: CreateResult, token: String, ps5: Boolean): Array<HolepunchDevice>?
+		@JvmStatic external fun holepunchCreate(token: String, logFile: String?, logVerbose: Boolean): Long
+		@JvmStatic external fun holepunchSessionCreate(ptr: Long): Int
+		@JvmStatic external fun holepunchSessionStart(ptr: Long, consoleUid: ByteArray, ps5: Boolean): Int
+		@JvmStatic external fun holepunchPunchHole(ptr: Long): Int
+		@JvmStatic external fun holepunchCancel(ptr: Long)
+		@JvmStatic external fun holepunchFree(ptr: Long)
 		@JvmStatic external fun discoveryServiceCreate(result: CreateResult, options: DiscoveryServiceOptions, javaService: DiscoveryService)
 		@JvmStatic external fun discoveryServiceFree(ptr: Long)
 		@JvmStatic external fun discoveryServiceWakeup(ptr: Long, host: String, userCredential: Long, ps5: Boolean)
@@ -113,6 +123,17 @@ class ErrorCode(val value: Int)
 {
 	override fun toString() = ChiakiNative.errorCodeToString(value)
 	var isSuccess = value == 0
+
+	companion object
+	{
+		// ChiakiErrorCode
+		const val MEMORY = 4
+		const val NETWORK = 6
+		const val HOST_DOWN = 8
+		const val HOST_UNREACH = 9
+		const val CANCELED = 14
+		const val TIMEOUT = 15
+	}
 }
 
 class ChiakiLog(val levelMask: Int, val callback: (level: Int, text: String) -> Unit)
@@ -353,6 +374,92 @@ enum class DualSenseIntensity(val value: Int)
 
 class CreateError(val errorCode: ErrorCode): Exception("Failed to create a native object: $errorCode")
 
+/** A console of a PSN account */
+class HolepunchDevice(nameBytes: ByteArray, val uid: ByteArray, val ps5: Boolean, val remotePlayEnabled: Boolean)
+{
+	val name = String(nameBytes, Charsets.UTF_8)
+
+	/** The name as discovery and registration have it, which turn each byte outside of ASCII into '?' */
+	val asciiName = String(ByteArray(nameBytes.size) { if(nameBytes[it] < 0) '?'.code.toByte() else nameBytes[it] }, Charsets.US_ASCII)
+
+	companion object
+	{
+		/**
+		 * Blocks for the network requests.
+		 * @throws CreateError
+		 */
+		fun list(token: String, ps5: Boolean): List<HolepunchDevice>
+		{
+			val result = ChiakiNative.CreateResult(0, 0)
+			val devices = ChiakiNative.holepunchListDevices(result, token, ps5)
+			if(devices == null)
+				throw CreateError(ErrorCode(result.errorCode))
+			return devices.toList()
+		}
+	}
+}
+
+/**
+ * Connects to a console through PSN, in the order of its steps, on a background thread as each
+ * one blocks. A [Session] then takes it over, or [free] ends it.
+ */
+class HolepunchConnection(token: String, logFile: String?, logVerbose: Boolean)
+{
+	private val lock = Any()
+	private var nativePtr = ChiakiNative.holepunchCreate(token, logFile, logVerbose)
+	private var canceled = false
+
+	init
+	{
+		if(nativePtr == 0L)
+			throw CreateError(ErrorCode(ErrorCode.MEMORY))
+	}
+
+	/** Creates the session on PSN, which the console joins */
+	fun createSession() = step { ChiakiNative.holepunchSessionCreate(it) }
+
+	/** Asks the console to join the session, and wakes it up from rest mode */
+	fun startSession(consoleUid: ByteArray, ps5: Boolean) = step { ChiakiNative.holepunchSessionStart(it, consoleUid, ps5) }
+
+	/** Opens the connection to the console through the routers on both ends */
+	fun punchHole() = step { ChiakiNative.holepunchPunchHole(it) }
+
+	private fun step(action: (Long) -> Int): ErrorCode
+	{
+		val ptr = synchronized(lock) {
+			if(canceled || nativePtr == 0L)
+				return ErrorCode(ErrorCode.CANCELED)
+			nativePtr
+		}
+		return ErrorCode(action(ptr))
+	}
+
+	/** Makes the running step return soon, from any thread. The connection still has to be freed. */
+	fun cancel() = synchronized(lock) {
+		if(!canceled && nativePtr != 0L)
+		{
+			canceled = true
+			ChiakiNative.holepunchCancel(nativePtr)
+		}
+	}
+
+	/** @return the native connection for a session to take over, or null if canceled */
+	internal fun takeOver(): Long? = synchronized(lock) {
+		val ptr = nativePtr.takeIf { !canceled && it != 0L }
+		if(ptr != null)
+			nativePtr = 0L
+		ptr
+	}
+
+	/** Blocks for a few seconds while it removes the session from PSN */
+	fun free()
+	{
+		val ptr = synchronized(lock) { nativePtr.also { nativePtr = 0L } }
+		if(ptr != 0L)
+			ChiakiNative.holepunchFree(ptr)
+	}
+}
+
 /** Numbers for the stream statistics overlay */
 data class StreamStats(
 	val bitrateMbps: Float,
@@ -365,7 +472,12 @@ data class StreamStats(
 	val decodeMsMax: Float
 )
 
-class Session(connectInfo: ConnectInfo, logFile: String?, logVerbose: Boolean)
+/**
+ * @param holepunch a connection through PSN that the session takes over, with its log instead of logFile
+ * @param psnAccountId the account id of the PSN sign-in, 8 bytes, for a connection through PSN
+ */
+class Session(connectInfo: ConnectInfo, logFile: String?, logVerbose: Boolean,
+	holepunch: HolepunchConnection? = null, psnAccountId: ByteArray? = null)
 {
 	interface EventCallback
 	{
@@ -377,8 +489,9 @@ class Session(connectInfo: ConnectInfo, logFile: String?, logVerbose: Boolean)
 
 	init
 	{
+		val holepunchPtr = holepunch?.let { it.takeOver() ?: throw CreateError(ErrorCode(ErrorCode.CANCELED)) } ?: 0L
 		val result = ChiakiNative.CreateResult(0, 0)
-		ChiakiNative.sessionCreate(result, connectInfo, logFile, logVerbose, this)
+		ChiakiNative.sessionCreate(result, connectInfo, logFile, logVerbose, this, holepunchPtr, psnAccountId)
 		val errorCode = ErrorCode(result.errorCode)
 		if(!errorCode.isSuccess)
 			throw CreateError(errorCode)

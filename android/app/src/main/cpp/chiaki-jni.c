@@ -348,14 +348,46 @@ static void android_chiaki_event_cb(ChiakiEvent *event, void *user)
 	(*global_vm)->DetachCurrentThread(global_vm);
 }
 
-JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject result, jobject connect_info_obj, jstring log_file_str, jboolean log_verbose, jobject java_session)
+/** A connection through PSN, until a session takes it over with its log */
+typedef struct android_chiaki_holepunch_t
 {
-	AndroidChiakiSession *session = NULL;
+	ChiakiLog *log;
+	ChiakiHolepunchSession session;
+} AndroidChiakiHolepunch;
+
+static ChiakiLog *log_create(JNIEnv *env, jstring log_file_str, jboolean log_verbose)
+{
 	ChiakiLog *log = malloc(sizeof(ChiakiLog));
+	if(!log)
+		return NULL;
 	const char *log_file = log_file_str ? E->GetStringUTFChars(env, log_file_str, NULL) : NULL;
 	android_chiaki_file_log_init(log, log_verbose ? CHIAKI_LOG_ALL : (CHIAKI_LOG_ALL & ~CHIAKI_LOG_VERBOSE), log_file);
 	if(log_file)
 		E->ReleaseStringUTFChars(env, log_file_str, log_file);
+	return log;
+}
+
+/**
+ * @param holepunch_ptr a connection through PSN from holepunchCreate, or 0. The session takes it
+ * over, also when creating the session fails.
+ * @param psn_account_id_array the account id of the PSN sign-in, for a connection through PSN
+ */
+JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject result, jobject connect_info_obj, jstring log_file_str, jboolean log_verbose, jobject java_session,
+		jlong holepunch_ptr, jbyteArray psn_account_id_array)
+{
+	AndroidChiakiSession *session = NULL;
+	AndroidChiakiHolepunch *holepunch = (AndroidChiakiHolepunch *)holepunch_ptr;
+	// Until chiaki_session_init() takes it over
+	ChiakiHolepunchSession holepunch_session = NULL;
+	ChiakiLog *log;
+	if(holepunch)
+	{
+		log = holepunch->log;
+		holepunch_session = holepunch->session;
+		free(holepunch);
+	}
+	else
+		log = log_create(env, log_file_str, log_verbose);
 
 	ChiakiErrorCode err = CHIAKI_ERR_SUCCESS;
 	char *host_str = NULL;
@@ -374,6 +406,23 @@ JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject 
 	ChiakiConnectInfo connect_info = { 0 };
 	connect_info.ps5 = ps5;
 	connect_info.enable_dualsense = enable_dualsense;
+
+	if(!log)
+	{
+		err = CHIAKI_ERR_MEMORY;
+		goto beach;
+	}
+
+	if(holepunch_session)
+	{
+		if(!psn_account_id_array || E->GetArrayLength(env, psn_account_id_array) != sizeof(connect_info.psn_account_id))
+		{
+			CHIAKI_LOGE(log, "PSN Account ID passed from Java has invalid length");
+			err = CHIAKI_ERR_INVALID_DATA;
+			goto beach;
+		}
+		E->GetByteArrayRegion(env, psn_account_id_array, 0, sizeof(connect_info.psn_account_id), (jbyte *)connect_info.psn_account_id);
+	}
 
 	const char *str_borrow = E->GetStringUTFChars(env, host_string, NULL);
 	connect_info.host = host_str = strdup(str_borrow);
@@ -447,6 +496,9 @@ JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject 
 
 	android_chiaki_audio_decoder_set_cb(&session->audio_decoder, android_chiaki_audio_output_settings, android_chiaki_audio_output_frame, session->audio_output);
 
+	connect_info.holepunch_session = holepunch_session;
+	// It finishes the connection through PSN when it fails, too
+	holepunch_session = NULL;
 	err = chiaki_session_init(&session->session, &connect_info, log);
 	if(err != CHIAKI_ERR_SUCCESS)
 	{
@@ -524,6 +576,8 @@ JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject 
 	}
 
 beach:
+	if(holepunch_session)
+		chiaki_holepunch_session_fini(holepunch_session);
 	if(!session && log)
 	{
 		android_chiaki_file_log_fini(log);
@@ -682,6 +736,146 @@ JNIEXPORT void JNICALL JNI_FCN(sessionGetStats)(JNIEnv *env, jobject obj, jlong 
 		(jfloat)(__atomic_load_n(&decoder->stats_latency_max_us, __ATOMIC_RELAXED) / 1000.0)
 	};
 	E->SetFloatArrayRegion(env, stats_array, 0, 6, stats);
+}
+
+/**
+ * Lists the consoles of a PSN account. Blocks for the network requests.
+ * @return an array of HolepunchDevice, or null if it failed, with result.errorCode set
+ */
+JNIEXPORT jobjectArray JNICALL JNI_FCN(holepunchListDevices)(JNIEnv *env, jobject obj, jobject result, jstring token_string, jboolean ps5)
+{
+	const char *token = E->GetStringUTFChars(env, token_string, NULL);
+	ChiakiHolepunchDeviceInfo *devices = NULL;
+	size_t devices_count = 0;
+	ChiakiErrorCode err = chiaki_holepunch_list_devices(token,
+			ps5 ? CHIAKI_HOLEPUNCH_CONSOLE_TYPE_PS5 : CHIAKI_HOLEPUNCH_CONSOLE_TYPE_PS4,
+			&devices, &devices_count, &global_log);
+	E->ReleaseStringUTFChars(env, token_string, token);
+	jclass result_class = E->GetObjectClass(env, result);
+	E->SetIntField(env, result, E->GetFieldID(env, result_class, "errorCode", "I"), (jint)err);
+	if(err != CHIAKI_ERR_SUCCESS)
+		return NULL;
+
+	jclass device_class = E->FindClass(env, BASE_PACKAGE"/HolepunchDevice");
+	jmethodID device_ctor = E->GetMethodID(env, device_class, "<init>", "([B[BZZ)V");
+	jobjectArray r = E->NewObjectArray(env, devices_count, device_class, NULL);
+	for(size_t i=0; i<devices_count; i++)
+	{
+		ChiakiHolepunchDeviceInfo *device = &devices[i];
+		// The name is UTF-8, which isn't always valid modified UTF-8 for NewStringUTF()
+		size_t name_size = strnlen(device->device_name, sizeof(device->device_name));
+		jobject java_device = E->NewObject(env, device_class, device_ctor,
+				jnibytearray_create(env, (const uint8_t *)device->device_name, name_size),
+				jnibytearray_create(env, device->device_uid, sizeof(device->device_uid)),
+				(jboolean)(device->type == CHIAKI_HOLEPUNCH_CONSOLE_TYPE_PS5),
+				(jboolean)device->remoteplay_enabled);
+		E->SetObjectArrayElement(env, r, i, java_device);
+		E->DeleteLocalRef(env, java_device);
+	}
+	if(devices)
+		chiaki_holepunch_free_device_list(&devices);
+	return r;
+}
+
+/**
+ * Starts a connection through PSN, which the steps below continue, in order
+ * @return 0 if it failed
+ */
+JNIEXPORT jlong JNICALL JNI_FCN(holepunchCreate)(JNIEnv *env, jobject obj, jstring token_string, jstring log_file_str, jboolean log_verbose)
+{
+	AndroidChiakiHolepunch *holepunch = CHIAKI_NEW(AndroidChiakiHolepunch);
+	if(!holepunch)
+		return 0;
+	holepunch->log = log_create(env, log_file_str, log_verbose);
+	if(!holepunch->log)
+	{
+		free(holepunch);
+		return 0;
+	}
+	const char *token = E->GetStringUTFChars(env, token_string, NULL);
+	holepunch->session = chiaki_holepunch_session_init(token, holepunch->log);
+	E->ReleaseStringUTFChars(env, token_string, token);
+	if(!holepunch->session)
+	{
+		CHIAKI_LOGE(holepunch->log, "Failed to start the connection through PSN");
+		android_chiaki_file_log_fini(holepunch->log);
+		free(holepunch->log);
+		free(holepunch);
+		return 0;
+	}
+	CHIAKI_LOGI(holepunch->log, "Connecting through PSN");
+	return (jlong)holepunch;
+}
+
+/** Creates the session on PSN, which the console joins. Blocks. */
+JNIEXPORT jint JNICALL JNI_FCN(holepunchSessionCreate)(JNIEnv *env, jobject obj, jlong ptr)
+{
+	AndroidChiakiHolepunch *holepunch = (AndroidChiakiHolepunch *)ptr;
+	ChiakiErrorCode err = chiaki_holepunch_upnp_discover(holepunch->session);
+	if(err != CHIAKI_ERR_SUCCESS)
+	{
+		CHIAKI_LOGE(holepunch->log, "UPnP discovery failed: %s", chiaki_error_string(err));
+		return err;
+	}
+	err = chiaki_holepunch_session_create(holepunch->session);
+	if(err != CHIAKI_ERR_SUCCESS)
+	{
+		CHIAKI_LOGE(holepunch->log, "Creating the PSN session failed: %s", chiaki_error_string(err));
+		return err;
+	}
+	err = holepunch_session_create_offer(holepunch->session);
+	if(err != CHIAKI_ERR_SUCCESS)
+		CHIAKI_LOGE(holepunch->log, "Creating the offer for the control connection failed: %s", chiaki_error_string(err));
+	return err;
+}
+
+/** Asks the console, also in rest mode, to join the session. Blocks. */
+JNIEXPORT jint JNICALL JNI_FCN(holepunchSessionStart)(JNIEnv *env, jobject obj, jlong ptr, jbyteArray console_uid_array, jboolean ps5)
+{
+	AndroidChiakiHolepunch *holepunch = (AndroidChiakiHolepunch *)ptr;
+	uint8_t console_uid[32];
+	if(E->GetArrayLength(env, console_uid_array) != sizeof(console_uid))
+	{
+		CHIAKI_LOGE(holepunch->log, "Console id passed from Java has invalid length");
+		return CHIAKI_ERR_INVALID_DATA;
+	}
+	E->GetByteArrayRegion(env, console_uid_array, 0, sizeof(console_uid), (jbyte *)console_uid);
+	ChiakiErrorCode err = chiaki_holepunch_session_start(holepunch->session, console_uid,
+			ps5 ? CHIAKI_HOLEPUNCH_CONSOLE_TYPE_PS5 : CHIAKI_HOLEPUNCH_CONSOLE_TYPE_PS4);
+	if(err != CHIAKI_ERR_SUCCESS)
+		CHIAKI_LOGE(holepunch->log, "Starting the PSN session on the console failed: %s", chiaki_error_string(err));
+	return err;
+}
+
+/** Opens the control connection to the console through the routers. Blocks. */
+JNIEXPORT jint JNICALL JNI_FCN(holepunchPunchHole)(JNIEnv *env, jobject obj, jlong ptr)
+{
+	AndroidChiakiHolepunch *holepunch = (AndroidChiakiHolepunch *)ptr;
+	ChiakiErrorCode err = chiaki_holepunch_session_punch_hole(holepunch->session, CHIAKI_HOLEPUNCH_PORT_TYPE_CTRL);
+	if(err != CHIAKI_ERR_SUCCESS)
+		CHIAKI_LOGE(holepunch->log, "Opening the control connection failed: %s", chiaki_error_string(err));
+	else
+		CHIAKI_LOGI(holepunch->log, "Opened the control connection through PSN");
+	return err;
+}
+
+/** Makes the step that is running return soon, from another thread */
+JNIEXPORT void JNICALL JNI_FCN(holepunchCancel)(JNIEnv *env, jobject obj, jlong ptr)
+{
+	AndroidChiakiHolepunch *holepunch = (AndroidChiakiHolepunch *)ptr;
+	chiaki_holepunch_main_thread_cancel(holepunch->session, true);
+}
+
+/** For a connection no session took over. Blocks while it removes the session from PSN. */
+JNIEXPORT void JNICALL JNI_FCN(holepunchFree)(JNIEnv *env, jobject obj, jlong ptr)
+{
+	AndroidChiakiHolepunch *holepunch = (AndroidChiakiHolepunch *)ptr;
+	if(!holepunch)
+		return;
+	chiaki_holepunch_session_fini(holepunch->session);
+	android_chiaki_file_log_fini(holepunch->log);
+	free(holepunch->log);
+	free(holepunch);
 }
 
 typedef struct android_discovery_service_t
