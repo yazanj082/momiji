@@ -25,6 +25,8 @@ class StreamSession(val connectInfo: ConnectInfo, val logManager: LogManager, va
 	var session: Session? = null
 		private set
 
+	fun stats() = session?.getStats()
+
 	private val _state = MutableLiveData<StreamState>(StreamStateIdle)
 	val state: LiveData<StreamState> get() = _state
 	private val _rumbleState = MutableLiveData<RumbleEvent>(RumbleEvent(0U, 0U))

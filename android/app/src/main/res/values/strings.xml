@@ -17,6 +17,12 @@
     <string name="stream_menu_title">Stream</string>
     <string name="stream_cant_display">The console doesn\'t allow streaming what it shows right now, the picture comes back when it\'s over</string>
     <string name="action_stream_menu_resume">Resume</string>
+    <string name="stream_stats_toggle">Statistics</string>
+    <string name="action_show_stats">Show statistics</string>
+    <string name="action_hide_stats">Hide statistics</string>
+    <string name="stream_stats_video">%1$d×%2$d · %3$.0f fps</string>
+    <string name="stream_stats_network">%1$.1f Mbit/s · %2$.1f%% lost · ping %3$.0f ms</string>
+    <string name="stream_stats_decode">Decoding %1$.1f ms, at most %2$.1f ms</string>
     <string name="stream_menu_hint">Press L1 + R1 + Options + Create together to open the menu</string>
     <string name="action_login_pin_connect">Connect</string>
     <string name="action_settings">Settings</string>

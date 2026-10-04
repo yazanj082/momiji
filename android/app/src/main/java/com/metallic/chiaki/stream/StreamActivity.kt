@@ -44,6 +44,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 	{
 		const val EXTRA_CONNECT_INFO = "connect_info"
 		private const val HIDE_UI_TIMEOUT_MS = 2000L
+		private const val STATS_INTERVAL_MS = 1000L
 	}
 
 	private lateinit var viewModel: StreamViewModel
@@ -98,6 +99,11 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		})
 		binding.onScreenControlsSwitch.setOnCheckedChangeListener { _, isChecked ->
 			viewModel.setOnScreenControlsEnabled(isChecked)
+			showOverlay()
+		}
+		binding.statsSwitch.isChecked = Preferences(this).streamStatsEnabled
+		binding.statsSwitch.setOnCheckedChangeListener { _, isChecked ->
+			setStatsVisible(isChecked)
 			showOverlay()
 		}
 
@@ -277,6 +283,8 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		viewModel.input.menuComboCallback = { showStreamMenu() }
 		acquireWifiLock()
 		viewModel.session.resume()
+		if(Preferences(this).streamStatsEnabled)
+			setStatsVisible(true)
 	}
 
 	private var wifiLock: WifiManager.WifiLock? = null
@@ -309,7 +317,53 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		wifiLock = null
 		(getSystemService(INPUT_SERVICE) as InputManager).unregisterInputDeviceListener(inputDeviceListener)
 		rumble?.stop()
+		statsHandler.removeCallbacks(updateStatsRunnable)
 		viewModel.session.pause()
+	}
+
+	private val statsHandler = Handler(Looper.getMainLooper())
+	private var statsLastFrames = -1L
+	private var statsLastTimeMs = 0L
+
+	private val updateStatsRunnable = object: Runnable
+	{
+		override fun run()
+		{
+			updateStats()
+			statsHandler.postDelayed(this, STATS_INTERVAL_MS)
+		}
+	}
+
+	/** Shows or hides the statistics, and remembers it for the next streams */
+	private fun setStatsVisible(visible: Boolean)
+	{
+		Preferences(this).streamStatsEnabled = visible
+		if(binding.statsSwitch.isChecked != visible)
+			binding.statsSwitch.isChecked = visible
+		statsHandler.removeCallbacks(updateStatsRunnable)
+		statsLastFrames = -1
+		binding.statsTextView.isVisible = visible
+		if(visible)
+			statsHandler.post(updateStatsRunnable)
+	}
+
+	private fun updateStats()
+	{
+		val stats = viewModel.session.stats() ?: return
+		val now = SystemClock.elapsedRealtime()
+		// Frames per second from the frames rendered since the last update
+		val fps = if(statsLastFrames >= 0 && now > statsLastTimeMs)
+			(stats.framesRendered - statsLastFrames) * 1000f / (now - statsLastTimeMs)
+		else
+			0f
+		statsLastFrames = stats.framesRendered
+		statsLastTimeMs = now
+		val profile = viewModel.session.connectInfo.videoProfile
+		binding.statsTextView.text = listOf(
+			getString(R.string.stream_stats_video, profile.width, profile.height, fps),
+			getString(R.string.stream_stats_network, stats.bitrateMbps, stats.packetLoss * 100f, stats.pingMs),
+			getString(R.string.stream_stats_decode, stats.decodeMsAverage, stats.decodeMsMax)
+		).joinToString("\n")
 	}
 
 	override fun onDestroy()
@@ -443,11 +497,18 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 			return
 		// The dialog takes the input from here on, so the console must not see the combo held forever
 		viewModel.input.releaseAll()
+		val statsVisible = binding.statsTextView.isVisible
 		dialog = MaterialAlertDialogBuilder(this)
 			.setTitle(R.string.stream_menu_title)
-			.setItems(arrayOf(getString(R.string.action_stream_menu_resume), getString(R.string.action_quit_session))) { _, which ->
-				if(which == 1)
-					finish()
+			.setItems(arrayOf(
+				getString(R.string.action_stream_menu_resume),
+				getString(if(statsVisible) R.string.action_hide_stats else R.string.action_show_stats),
+				getString(R.string.action_quit_session))) { _, which ->
+				when(which)
+				{
+					1 -> setStatsVisible(!statsVisible)
+					2 -> finish()
+				}
 			}
 			.setOnDismissListener {
 				dialog = null

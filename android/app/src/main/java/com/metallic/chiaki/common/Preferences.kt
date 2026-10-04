@@ -205,6 +205,11 @@ class Preferences(context: Context)
 		set(value) = setMapping("touchpad", value)
 
 	// Last used Fit/Zoom/Stretch mode of the stream, stored as the TransformMode name
+	val streamStatsEnabledKey get() = "stream_stats_enabled"
+	var streamStatsEnabled
+		get() = sharedPreferences.getBoolean(streamStatsEnabledKey, false)
+		set(value) { sharedPreferences.edit().putBoolean(streamStatsEnabledKey, value).apply() }
+
 	val streamDisplayModeKey get() = "stream_display_mode"
 	var streamDisplayMode: String?
 		get() = sharedPreferences.getString(streamDisplayModeKey, null)

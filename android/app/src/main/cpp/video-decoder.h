@@ -32,6 +32,15 @@ typedef struct android_chiaki_video_decoder_t {
   uint64_t latency_sum_us;
   uint64_t latency_max_us;
   uint32_t latency_count;
+
+  // For the stream statistics overlay, over a shorter window than the log's
+  uint64_t stats_sum_us;
+  uint64_t stats_max_us;
+  uint32_t stats_count;
+  // Read from other threads with __atomic_load_n
+  uint32_t frames_rendered;
+  uint32_t stats_latency_avg_us;
+  uint32_t stats_latency_max_us;
 } AndroidChiakiVideoDecoder;
 
 ChiakiErrorCode

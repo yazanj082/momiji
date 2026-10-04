@@ -15,6 +15,8 @@
 #define INPUT_BUFFER_TIMEOUT_MS 10
 // Decode latency is logged once per this many frames
 #define LATENCY_LOG_FRAMES 600
+// About half a second at 60 fps, for the statistics overlay
+#define LATENCY_STATS_FRAMES 30
 
 static void *android_chiaki_video_decoder_output_thread_func(void *user);
 
@@ -32,6 +34,12 @@ android_chiaki_video_decoder_init(AndroidChiakiVideoDecoder *decoder,
   memset(decoder->queued_us, 0, sizeof(decoder->queued_us));
   decoder->latency_sum_us = 0;
   decoder->latency_max_us = 0;
+  decoder->stats_sum_us = 0;
+  decoder->stats_max_us = 0;
+  decoder->stats_count = 0;
+  decoder->frames_rendered = 0;
+  decoder->stats_latency_avg_us = 0;
+  decoder->stats_latency_max_us = 0;
   decoder->latency_count = 0;
   return chiaki_mutex_init(&decoder->codec_mutex, false);
 }
@@ -287,6 +295,21 @@ static void track_latency(AndroidChiakiVideoDecoder *decoder,
   if (!queued)
     return;
   uint64_t latency = chiaki_time_now_monotonic_us() - queued;
+
+  decoder->stats_sum_us += latency;
+  if (latency > decoder->stats_max_us)
+    decoder->stats_max_us = latency;
+  if (++decoder->stats_count >= LATENCY_STATS_FRAMES) {
+    __atomic_store_n(&decoder->stats_latency_avg_us,
+                     (uint32_t)(decoder->stats_sum_us / decoder->stats_count),
+                     __ATOMIC_RELAXED);
+    __atomic_store_n(&decoder->stats_latency_max_us,
+                     (uint32_t)decoder->stats_max_us, __ATOMIC_RELAXED);
+    decoder->stats_sum_us = 0;
+    decoder->stats_max_us = 0;
+    decoder->stats_count = 0;
+  }
+
   decoder->latency_sum_us += latency;
   if (latency > decoder->latency_max_us)
     decoder->latency_max_us = latency;
@@ -313,8 +336,10 @@ static void *android_chiaki_video_decoder_output_thread_func(void *user) {
     if (status >= 0) {
       AMediaCodec_releaseOutputBuffer(decoder->codec, (size_t)status,
                                       info.size != 0);
-      if (info.size != 0)
+      if (info.size != 0) {
+        __atomic_add_fetch(&decoder->frames_rendered, 1, __ATOMIC_RELAXED);
         track_latency(decoder, (uint64_t)info.presentationTimeUs);
+      }
       if (info.flags & AMEDIACODEC_BUFFER_FLAG_END_OF_STREAM) {
         CHIAKI_LOGI(decoder->log, "AMediaCodec reported EOS");
         break;

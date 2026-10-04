@@ -99,6 +99,7 @@ private class ChiakiNative
 		@JvmStatic external fun sessionSetHapticsDevice(ptr: Long, deviceId: Int)
 		@JvmStatic external fun sessionSetLoginPin(ptr: Long, pin: String)
 		@JvmStatic external fun sessionGotoBed(ptr: Long): Int
+		@JvmStatic external fun sessionGetStats(ptr: Long, stats: FloatArray)
 		@JvmStatic external fun discoveryServiceCreate(result: CreateResult, options: DiscoveryServiceOptions, javaService: DiscoveryService)
 		@JvmStatic external fun discoveryServiceFree(ptr: Long)
 		@JvmStatic external fun discoveryServiceWakeup(ptr: Long, host: String, userCredential: Long, ps5: Boolean)
@@ -352,6 +353,18 @@ enum class DualSenseIntensity(val value: Int)
 
 class CreateError(val errorCode: ErrorCode): Exception("Failed to create a native object: $errorCode")
 
+/** Numbers for the stream statistics overlay */
+data class StreamStats(
+	val bitrateMbps: Float,
+	/** 0 to 1 */
+	val packetLoss: Float,
+	/** Measured when connecting */
+	val pingMs: Float,
+	val framesRendered: Long,
+	val decodeMsAverage: Float,
+	val decodeMsMax: Float
+)
+
 class Session(connectInfo: ConnectInfo, logFile: String?, logVerbose: Boolean)
 {
 	interface EventCallback
@@ -456,6 +469,15 @@ class Session(connectInfo: ConnectInfo, logFile: String?, logVerbose: Boolean)
 
 	/** Puts the console in rest mode, once connected */
 	fun gotoBed() = ErrorCode(ChiakiNative.sessionGotoBed(nativePtr))
+
+	fun getStats(): StreamStats?
+	{
+		if(nativePtr == 0L)
+			return null
+		val stats = FloatArray(6)
+		ChiakiNative.sessionGetStats(nativePtr, stats)
+		return StreamStats(stats[0], stats[1], stats[2], stats[3].toLong(), stats[4], stats[5])
+	}
 
 	/**
 	 * Motion of the controller itself (rad/s and g), which then replaces the motion

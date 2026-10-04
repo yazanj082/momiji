@@ -45,6 +45,29 @@
         android:layout_height="match_parent"/>
 
 
+    <!-- Stream statistics, turned on from the stream menu or the overlay. Doesn't take touches. -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fitsSystemWindows="true">
+
+        <TextView
+            android:id="@+id/statsTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|start"
+            android:layout_margin="12dp"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="6dp"
+            android:background="@drawable/stream_stats_background"
+            android:fontFamily="monospace"
+            android:textSize="12sp"
+            android:lineSpacingExtra="2dp"
+            android:textColor="@color/stream_text"
+            android:importantForAccessibility="no"
+            android:visibility="gone" />
+    </FrameLayout>
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/overlay"
         android:layout_width="match_parent"
@@ -69,6 +92,17 @@
                 android:text="On-Screen Controls"
                 app:switchPadding="8dp"
                 android:layout_marginLeft="8dp"
+                android:textColor="@color/stream_text"/>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/statsSwitch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintStart_toEndOf="@id/onScreenControlsSwitch"
+                app:layout_constraintBottom_toBottomOf="parent"
+                android:text="@string/stream_stats_toggle"
+                app:switchPadding="8dp"
+                android:layout_marginStart="24dp"
                 android:textColor="@color/stream_text"/>
 
 
