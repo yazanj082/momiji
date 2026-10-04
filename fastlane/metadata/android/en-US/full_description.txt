@@ -18,6 +18,7 @@ Momiji streams games from your PS5 or PS4 to your Android phone, tablet, TV box 
 <b>Great picture, low latency</b>
 • Up to 1080p at 60 fps, with H.264 or HEVC and up to 100 Mbps.
 • Quality presets: Smooth, Balanced or Sharp, also for each console.
+• Super resolution sharpens the stream on screens with more pixels than it, like a phone's or a 4K TV.
 • Hardware decoding in low latency mode, with the display's refresh rate matched to the stream.
 • An optional filter against color banding in dark scenes.
 
