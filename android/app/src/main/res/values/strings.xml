@@ -200,6 +200,20 @@
     <string name="preferences_bitrate_auto">Auto (%d)</string>
     <string name="preferences_codec_title_h264" translatable="false">H264</string>
     <string name="preferences_codec_title_h265">H265 (PS5 only)</string>
+    <string name="preferences_quality_title">Quality</string>
+    <string name="quality_summary">%1$s: %2$s</string>
+    <string name="quality_smooth">Smooth</string>
+    <string name="quality_smooth_summary">720p with less data, for the least delay on a weak network</string>
+    <string name="quality_balanced">Balanced</string>
+    <string name="quality_balanced_summary">the usual picture for this device</string>
+    <string name="quality_sharp">Sharp</string>
+    <string name="quality_sharp_summary">1080p with more data, for a strong network</string>
+    <string name="quality_custom">Custom</string>
+    <string name="quality_custom_summary">your own resolution, frame rate and bitrate</string>
+    <string name="quality_console_menu">Stream quality</string>
+    <string name="quality_console_title">Stream quality of %s</string>
+    <string name="quality_console_default">As in Settings (%s)</string>
+    <string name="quality_away_title">Quality away from home</string>
     <string name="preferences_debanding_title">Smooth gradients</string>
     <string name="preferences_debanding_summary">Hides color banding in dark scenes, but adds a little delay</string>
     <string name="preferences_swap_cross_moon_title">Swap face buttons</string>

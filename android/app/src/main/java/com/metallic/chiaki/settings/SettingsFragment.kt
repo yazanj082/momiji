@@ -69,6 +69,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 
 	override fun getString(key: String, defValue: String?) = when
 	{
+		key == preferences.qualityKey -> preferences.quality.value
 		key == preferences.resolutionKey -> preferences.resolution.value
 		key == preferences.fpsKey -> preferences.fps.value
 		key == preferences.bitrateKey -> preferences.bitrate?.toString() ?: ""
@@ -80,6 +81,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 	{
 		when
 		{
+			key == preferences.qualityKey -> preferences.quality = Preferences.Quality.fromValue(value) ?: return
 			key == preferences.resolutionKey ->
 			{
 				val resolution = Preferences.Resolution.values().firstOrNull { it.value == value } ?: return
@@ -126,6 +128,23 @@ class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 			if(enabled == true)
 				view?.post { showHomeScreenChooser() }
 			true
+		}
+
+		val customPreferences = listOf(R.string.preferences_resolution_key, R.string.preferences_fps_key, R.string.preferences_bitrate_key)
+			.mapNotNull { preferenceScreen.findPreference<Preference>(getString(it)) }
+		preferenceScreen.findPreference<ListPreference>(preferences.qualityKey)?.let {
+			it.entryValues = Preferences.Quality.values().map { quality -> quality.value }.toTypedArray()
+			it.entries = Preferences.Quality.values().map { quality -> getString(quality.title) }.toTypedArray()
+			it.summaryProvider = Preference.SummaryProvider<ListPreference> {
+				val quality = preferences.quality
+				getString(R.string.quality_summary, getString(quality.title), getString(quality.summary))
+			}
+			// The details are only for Custom
+			customPreferences.forEach { preference -> preference.isVisible = preferences.quality == Preferences.Quality.CUSTOM }
+			it.setOnPreferenceChangeListener { _, value ->
+				customPreferences.forEach { preference -> preference.isVisible = value == Preferences.Quality.CUSTOM.value }
+				true
+			}
 		}
 
 		preferenceScreen.findPreference<ListPreference>(getString(R.string.preferences_resolution_key))?.let {

@@ -102,6 +102,11 @@
         app:key="category_stream"
         app:title="@string/preferences_category_title_stream">
         <ListPreference
+            app:key="stream_quality"
+            app:title="@string/preferences_quality_title"
+            app:icon="@drawable/ic_resolution"/>
+
+        <ListPreference
             app:key="@string/preferences_resolution_key"
             app:title="@string/preferences_resolution_title"
             app:summary="%s"

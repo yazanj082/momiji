@@ -40,9 +40,31 @@ class Preferences(context: Context)
 		CODEC_H265("h265", R.string.preferences_codec_title_h265, com.metallic.chiaki.lib.Codec.CODEC_H265)
 	}
 
+	/**
+	 * Resolution, frame rate and bitrate together. Custom uses the separate settings for these.
+	 */
+	enum class Quality(val value: String, @StringRes val title: Int, @StringRes val summary: Int)
+	{
+		SMOOTH("smooth", R.string.quality_smooth, R.string.quality_smooth_summary),
+		BALANCED("balanced", R.string.quality_balanced, R.string.quality_balanced_summary),
+		SHARP("sharp", R.string.quality_sharp, R.string.quality_sharp_summary),
+		CUSTOM("custom", R.string.quality_custom, R.string.quality_custom_summary);
+
+		companion object
+		{
+			fun fromValue(value: String?) = values().firstOrNull { it.value == value }
+		}
+	}
+
 	companion object
 	{
 		val resolutionAll = Resolution.values()
+		/** Little data and delay, for a weak network and away from home */
+		private const val SMOOTH_BITRATE = 5000
+		/** A PS4 Pro can't stream much more */
+		private const val SHARP_BITRATE_PS4 = 15000
+		private const val SHARP_BITRATE_PS5 = 25000
+		val qualityAwayDefault = Quality.SMOOTH
 		val fpsDefault = FPS.FPS_60
 		val fpsAll = FPS.values()
 		val codecDefault = Codec.CODEC_H265
@@ -180,11 +202,50 @@ class Preferences(context: Context)
 		set(value) { sharedPreferences.edit().putString(codecKey, value.value).apply() }
 
 	private val videoProfileDefaultBitrate get() = ConnectVideoProfile.preset(resolution.preset, fps.preset, codec.codec)
-	val videoProfile get() = videoProfileDefaultBitrate.let {
-		val bitrate = bitrate
-		if(bitrate == null)
-			it
+	val videoProfile get() = videoProfile(quality, true)
+
+	val qualityKey get() = "stream_quality"
+	var quality: Quality
+		get() = Quality.fromValue(sharedPreferences.getString(qualityKey, null))
+			// The details someone set before there were presets stay as they are
+			?: if(listOf(resolutionKey, fpsKey, bitrateKey).any { sharedPreferences.contains(it) }) Quality.CUSTOM else Quality.BALANCED
+		set(value) { sharedPreferences.edit().putString(qualityKey, value.value).apply() }
+
+	/** For playing away from home, where the network is usually slower */
+	val qualityAwayKey get() = "stream_quality_away"
+	var qualityAway: Quality
+		get() = Quality.fromValue(sharedPreferences.getString(qualityAwayKey, null))?.takeIf { it != Quality.CUSTOM } ?: qualityAwayDefault
+		set(value) { sharedPreferences.edit().putString(qualityAwayKey, value.value).apply() }
+
+	private fun consoleQualityKey(mac: MacAddress) = "console/${mac.value}/quality"
+
+	/** The quality of a console, or null for the one in the settings */
+	fun consoleQuality(mac: MacAddress) = Quality.fromValue(sharedPreferences.getString(consoleQualityKey(mac), null))
+
+	fun setConsoleQuality(mac: MacAddress, quality: Quality?) = sharedPreferences.edit().also {
+		if(quality == null)
+			it.remove(consoleQualityKey(mac))
 		else
-			it.copy(bitrate = bitrate)
+			it.putString(consoleQualityKey(mac), quality.value)
+	}.apply()
+
+	/** @param away whether connecting from away from home, through PSN */
+	fun videoProfile(mac: MacAddress?, ps5: Boolean, away: Boolean) =
+		videoProfile(if(away) qualityAway else mac?.let { consoleQuality(it) } ?: quality, ps5)
+
+	fun videoProfile(quality: Quality, ps5: Boolean): ConnectVideoProfile = when(quality)
+	{
+		Quality.SMOOTH -> ConnectVideoProfile.preset(Resolution.RES_720P.preset, FPS.FPS_60.preset, codec.codec)
+			.copy(bitrate = SMOOTH_BITRATE)
+		Quality.BALANCED -> ConnectVideoProfile.preset(resolutionDefault.preset, FPS.FPS_60.preset, codec.codec)
+		Quality.SHARP -> ConnectVideoProfile.preset(Resolution.RES_1080P.preset, FPS.FPS_60.preset, codec.codec)
+			.copy(bitrate = if(ps5) SHARP_BITRATE_PS5 else SHARP_BITRATE_PS4)
+		Quality.CUSTOM -> videoProfileDefaultBitrate.let {
+			val bitrate = bitrate
+			if(bitrate == null)
+				it
+			else
+				it.copy(bitrate = bitrate)
+		}
 	}
 }

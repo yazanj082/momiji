@@ -100,7 +100,7 @@ class MainActivity : AppCompatActivity()
 
 		val hostsAdapter = DisplayHostRecyclerViewAdapter(this::hostTriggered, this::wakeupHost, this::putInRestMode,
 			this::registerHostAgain, this::removeRegistration, this::editHost, this::deleteHost,
-			this::addToHomeScreen.takeIf { ConsoleShortcuts.canPin(this) })
+			this::addToHomeScreen.takeIf { ConsoleShortcuts.canPin(this) }, this::chooseQuality)
 		val supportAdapter = SupportFooterAdapter(this::openSupportPage)
 		binding.hostsRecyclerView.adapter = ConcatAdapter(hostsAdapter, supportAdapter)
 		layoutManager = GridLayoutManager(this, 1)
@@ -342,14 +342,16 @@ class MainActivity : AppCompatActivity()
 		if(host is PsnDisplayHost)
 		{
 			val preferences = Preferences(this)
-			startStream(host, ConnectInfo(host.isPS5, host.host, registeredHost!!.rpRegistKey, registeredHost.rpKey, preferences.videoProfile,
+			startStream(host, ConnectInfo(host.isPS5, host.host, registeredHost!!.rpRegistKey, registeredHost.rpKey,
+				preferences.videoProfile(registeredHost.serverMac, host.isPS5, away = true),
 				enableDualSense = host.isPS5 && preferences.dualSenseEnabled, psnConsoleUid = host.consoleUid))
 		}
 		else if(registeredHost != null)
 		{
 			fun connect() {
 				val preferences = Preferences(this)
-				startStream(host, ConnectInfo(host.isPS5, host.host, registeredHost.rpRegistKey, registeredHost.rpKey, preferences.videoProfile,
+				startStream(host, ConnectInfo(host.isPS5, host.host, registeredHost.rpRegistKey, registeredHost.rpKey,
+					preferences.videoProfile(registeredHost.serverMac, host.isPS5, away = false),
 					enableDualSense = host.isPS5 && preferences.dualSenseEnabled))
 			}
 
@@ -504,6 +506,29 @@ class MainActivity : AppCompatActivity()
 			wakeupAndConnect(host)
 		else
 			hostTriggered(host)
+	}
+
+	private fun chooseQuality(host: DisplayHost)
+	{
+		val registeredHost = host.registeredHost ?: return
+		val preferences = Preferences(this)
+		val current = preferences.consoleQuality(registeredHost.serverMac)
+		// The console's choices: the one in the settings, or a preset
+		val choices = listOf<Preferences.Quality?>(null) + Preferences.Quality.values().filter { it != Preferences.Quality.CUSTOM }
+		val titles = choices.map {
+			if(it == null)
+				getString(R.string.quality_console_default, getString(preferences.quality.title))
+			else
+				getString(it.title)
+		}.toTypedArray()
+		MaterialAlertDialogBuilder(this)
+			.setTitle(getString(R.string.quality_console_title, host.name ?: host.host))
+			.setSingleChoiceItems(titles, choices.indexOf(current).coerceAtLeast(0)) { dialog, which ->
+				preferences.setConsoleQuality(registeredHost.serverMac, choices[which])
+				dialog.dismiss()
+			}
+			.setNegativeButton(R.string.action_connect_cancel_connect, null)
+			.show()
 	}
 
 	private fun addToHomeScreen(host: DisplayHost)

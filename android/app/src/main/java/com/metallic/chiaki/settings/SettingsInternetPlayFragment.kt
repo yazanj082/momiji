@@ -12,6 +12,7 @@ import androidx.preference.PreferenceCategory
 import androidx.preference.PreferenceFragmentCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.metallic.chiaki.R
+import com.metallic.chiaki.common.Preferences
 import com.metallic.chiaki.common.PsnAccount
 import com.metallic.chiaki.regist.PsnAuth
 import com.metallic.chiaki.regist.PsnSignIn
@@ -62,6 +63,13 @@ class SettingsInternetPlayFragment: PreferenceFragmentCompat(), TitleFragment
 				setIcon(R.drawable.ic_logout)
 				setOnPreferenceClickListener { confirmSignOut(); true }
 			})
+			val preferences = Preferences(context)
+			accountCategory.addPreference(Preference(context).apply {
+				title = getString(R.string.quality_away_title)
+				summary = getString(R.string.quality_summary, getString(preferences.qualityAway.title), getString(preferences.qualityAway.summary))
+				setIcon(R.drawable.ic_resolution)
+				setOnPreferenceClickListener { chooseQualityAway(); true }
+			})
 		}
 		else
 		{
@@ -110,6 +118,23 @@ class SettingsInternetPlayFragment: PreferenceFragmentCompat(), TitleFragment
 		super.onActivityResult(requestCode, resultCode, data)
 		if(requestCode == REQUEST_SIGN_IN && resultCode == Activity.RESULT_OK)
 			Toast.makeText(context ?: return, R.string.internet_play_signed_in_toast, Toast.LENGTH_LONG).show()
+	}
+
+	/** The presets, as Custom is for the settings of every connection */
+	private fun chooseQualityAway()
+	{
+		val context = context ?: return
+		val preferences = Preferences(context)
+		val choices = Preferences.Quality.values().filter { it != Preferences.Quality.CUSTOM }
+		MaterialAlertDialogBuilder(context)
+			.setTitle(R.string.quality_away_title)
+			.setSingleChoiceItems(choices.map { getString(it.title) }.toTypedArray(), choices.indexOf(preferences.qualityAway)) { dialog, which ->
+				preferences.qualityAway = choices[which]
+				dialog.dismiss()
+				update()
+			}
+			.setNegativeButton(android.R.string.cancel, null)
+			.show()
 	}
 
 	private fun confirmSignOut()
