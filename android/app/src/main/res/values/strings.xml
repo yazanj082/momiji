@@ -96,6 +96,24 @@
     <string name="psn_sign_in_failed_internet_play">Couldn\'t sign in</string>
     <string name="action_not_now">Not now</string>
 
+    <!-- Shortcuts, the Quick Settings tile and the widget -->
+    <string name="shortcut_play_console">Play %s</string>
+    <string name="shortcut_console_removed">This console is no longer registered in Momiji</string>
+    <string name="shortcut_pin_failed">The home screen didn\'t take the shortcut</string>
+    <string name="action_add_to_home_screen">Add to home screen</string>
+    <string name="tile_open">Open</string>
+    <string name="preferences_tile_title">Quick Settings tile</string>
+    <string name="preferences_tile_summary">Play the console you played last right from Quick Settings</string>
+    <string name="preferences_tile_already_added">The tile is already in Quick Settings</string>
+    <string name="widget_play_label">Play a console</string>
+    <string name="widget_play_description">Plays the console you played last</string>
+    <string name="widget_play_subtitle">%s · Tap to play</string>
+    <string name="widget_play_none">Tap to open</string>
+    <string name="connect_host_looking">Looking for %s…</string>
+    <string name="connect_host_your_console">your console</string>
+    <string name="connect_host_not_found">%s wasn\'t found. Check that it is on or in rest mode, and on the same network as this device.</string>
+    <string name="connect_host_not_found_psn">To play it away from home, sign in to PlayStation Network in Settings > Play away from home.</string>
+
     <!-- Playing away from home, through PlayStation Network -->
     <string name="preferences_internet_play_title">Play away from home</string>
     <string name="preferences_internet_play_summary_off">Play your consoles over the internet, through PlayStation Network</string>

@@ -106,6 +106,30 @@
         <activity
             android:name=".regist.PsnSignInReturnActivity"
             android:exported="false" />
+        <!-- Plays the console played last -->
+        <service
+            android:name=".shortcut.PlayTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <receiver
+            android:name=".shortcut.PlayWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_play_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_play_info" />
+        </receiver>
+
         <activity
             android:name=".manualconsole.EditManualConsoleActivity"
             android:theme="@style/MageTheme"

@@ -20,6 +20,14 @@
             app:fragment="com.metallic.chiaki.settings.SettingsInternetPlayFragment"
             app:icon="@drawable/ic_web" />
 
+        <!-- Shown where Android can add the tile from the app -->
+        <Preference
+            app:key="quick_settings_tile"
+            app:title="@string/preferences_tile_title"
+            app:summary="@string/preferences_tile_summary"
+            app:icon="@drawable/ic_tile"
+            app:isPreferenceVisible="false" />
+
         <SwitchPreference
             app:key="@string/preferences_home_screen_key"
             app:title="@string/preferences_home_screen_title"

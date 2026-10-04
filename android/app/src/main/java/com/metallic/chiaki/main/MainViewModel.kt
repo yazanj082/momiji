@@ -88,6 +88,11 @@ class MainViewModel(val database: AppDatabase, val preferences: Preferences, val
 
 	val hasRegisteredHosts = database.registeredHostDao().count().map { it > 0 }.toLiveData()
 
+	val registeredHosts = database.registeredHostDao().getAll().toLiveData()
+
+	/** Whether discovery had the time to find consoles here */
+	val isLocalSearchDone get() = localSearchDone.value == true
+
 	/**
 	 * The registered consoles that discovery doesn't find here but PSN can reach, matched by name.
 	 * With one PS5 on each side, the names don't have to match, as the console may have been renamed.

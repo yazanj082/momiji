@@ -3,6 +3,8 @@
 package com.metallic.chiaki.settings
 
 import android.app.Activity
+import android.app.StatusBarManager
+import android.content.ComponentName
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.res.Resources
@@ -10,7 +12,10 @@ import android.os.Build
 import android.os.Bundle
 import android.net.Uri
 import android.provider.Settings
+import android.graphics.drawable.Icon
 import android.text.InputType
+import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.preference.*
@@ -23,6 +28,7 @@ import com.metallic.chiaki.common.exportAndShareAllSettings
 import com.metallic.chiaki.common.ext.viewModelFactory
 import com.metallic.chiaki.common.getDatabase
 import com.metallic.chiaki.common.importSettingsFromUri
+import com.metallic.chiaki.shortcut.PlayTileService
 import com.metallic.chiaki.stream.ControllerRumble
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.addTo
@@ -169,6 +175,24 @@ class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 			it.intent = Intent(Intent.ACTION_VIEW, Uri.parse(supportUrl))
 		}
 		preferenceScreen.findPreference<Preference>("about_feedback")?.setOnPreferenceClickListener { sendFeedback(); true }
+
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !preferences.isTv)
+			preferenceScreen.findPreference<Preference>("quick_settings_tile")?.let {
+				it.isVisible = true
+				it.setOnPreferenceClickListener { addQuickSettingsTile(); true }
+			}
+	}
+
+	@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+	private fun addQuickSettingsTile()
+	{
+		val context = context ?: return
+		val statusBarManager = context.getSystemService(StatusBarManager::class.java) ?: return
+		statusBarManager.requestAddTileService(ComponentName(context, PlayTileService::class.java),
+			getString(R.string.app_name), Icon.createWithResource(context, R.drawable.ic_tile), context.mainExecutor) { result ->
+			if(result == StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ALREADY_ADDED)
+				Toast.makeText(context, R.string.preferences_tile_already_added, Toast.LENGTH_SHORT).show()
+		}
 	}
 
 	/** An email with the app version and the device filled in, as those matter for most problems */

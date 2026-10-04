@@ -4,6 +4,7 @@ package com.metallic.chiaki.main
 
 import android.app.ActivityOptions
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Rect
@@ -28,6 +29,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.metallic.chiaki.BuildConfig
 import com.metallic.chiaki.R
 import com.metallic.chiaki.common.*
 import com.metallic.chiaki.common.ext.putRevealExtra
@@ -41,6 +43,7 @@ import com.metallic.chiaki.regist.RegistActivity
 import com.metallic.chiaki.regist.showRemoveRegistrationDialog
 import com.metallic.chiaki.session.RestModeRequest
 import com.metallic.chiaki.settings.SettingsActivity
+import com.metallic.chiaki.shortcut.ConsoleShortcuts
 import com.metallic.chiaki.stream.StreamActivity
 import com.metallic.chiaki.common.ext.fitSystemBars
 
@@ -52,8 +55,20 @@ class MainActivity : AppCompatActivity()
 		private const val WAKEUP_CONNECT_TIMEOUT_MS = 90000L
 		private const val MIN_CARD_WIDTH_DP = 320
 
-		/** MacAddress value of a console that was just registered, to connect to as soon as it is listed */
+		/** MacAddress value of a registered console, to connect to as soon as it is listed */
 		const val EXTRA_CONNECT_HOST_MAC = "connect_host_mac"
+		/** Its name, while it isn't listed yet */
+		const val EXTRA_CONNECT_HOST_NAME = "connect_host_name"
+		const val ACTION_PLAY = BuildConfig.APPLICATION_ID + ".action.PLAY"
+		/** Discovery, waking up and PSN take a while, but not this long */
+		private const val CONNECT_HOST_TIMEOUT_MS = 25000L
+
+		/** Plays the registered console, from shortcuts, the tile and the widget */
+		fun playIntent(context: Context, mac: Long, name: String?) = Intent(context, MainActivity::class.java)
+			.setAction(ACTION_PLAY)
+			.putExtra(EXTRA_CONNECT_HOST_MAC, mac)
+			.putExtra(EXTRA_CONNECT_HOST_NAME, name)
+			.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
 	}
 
 	private lateinit var viewModel: MainViewModel
@@ -71,7 +86,6 @@ class MainActivity : AppCompatActivity()
 		binding = ActivityMainBinding.inflate(layoutInflater)
 		setContentView(binding.root)
 		binding.root.fitSystemBars()
-		connectHostMac = intent.getLongExtra(EXTRA_CONNECT_HOST_MAC, -1).takeIf { it >= 0 }
 
 		title = ""
 		setSupportActionBar(binding.toolbar)
@@ -85,7 +99,8 @@ class MainActivity : AppCompatActivity()
 		}).get(MainViewModel::class.java)
 
 		val hostsAdapter = DisplayHostRecyclerViewAdapter(this::hostTriggered, this::wakeupHost, this::putInRestMode,
-			this::registerHostAgain, this::removeRegistration, this::editHost, this::deleteHost)
+			this::registerHostAgain, this::removeRegistration, this::editHost, this::deleteHost,
+			this::addToHomeScreen.takeIf { ConsoleShortcuts.canPin(this) })
 		val supportAdapter = SupportFooterAdapter(this::openSupportPage)
 		binding.hostsRecyclerView.adapter = ConcatAdapter(hostsAdapter, supportAdapter)
 		layoutManager = GridLayoutManager(this, 1)
@@ -126,6 +141,10 @@ class MainActivity : AppCompatActivity()
 			updateEmptyInfo()
 		})
 		viewModel.hasRegisteredHosts.observe(this, Observer { updateEmptyInfo() })
+		viewModel.registeredHosts.observe(this, Observer { ConsoleShortcuts.update(this, it) })
+		// Not again when the activity is recreated
+		if(savedInstanceState == null)
+			connectHostFromIntent(intent)
 		viewModel.psnSignInExpired.observe(this, Observer { expired ->
 			if(expired)
 				showPsnSignInExpired()
@@ -229,6 +248,7 @@ class MainActivity : AppCompatActivity()
 	{
 		super.onStop()
 		stopWakeupConnect()
+		stopConnectHost()
 		viewModel.discoveryManager.pause()
 	}
 
@@ -298,8 +318,9 @@ class MainActivity : AppCompatActivity()
 		}
 	}
 
-	private fun startStream(connectInfo: ConnectInfo)
+	private fun startStream(host: DisplayHost, connectInfo: ConnectInfo)
 	{
+		host.registeredHost?.let { ConsoleShortcuts.played(this, ConsoleShortcuts.console(it, host.name)) }
 		Intent(this, StreamActivity::class.java).let {
 			it.putExtra(StreamActivity.EXTRA_CONNECT_INFO, connectInfo)
 			// Empty bounds open the stream full screen in Samsung DeX, without the window's title bar.
@@ -321,14 +342,14 @@ class MainActivity : AppCompatActivity()
 		if(host is PsnDisplayHost)
 		{
 			val preferences = Preferences(this)
-			startStream(ConnectInfo(host.isPS5, host.host, registeredHost!!.rpRegistKey, registeredHost.rpKey, preferences.videoProfile,
+			startStream(host, ConnectInfo(host.isPS5, host.host, registeredHost!!.rpRegistKey, registeredHost.rpKey, preferences.videoProfile,
 				enableDualSense = host.isPS5 && preferences.dualSenseEnabled, psnConsoleUid = host.consoleUid))
 		}
 		else if(registeredHost != null)
 		{
 			fun connect() {
 				val preferences = Preferences(this)
-				startStream(ConnectInfo(host.isPS5, host.host, registeredHost.rpRegistKey, registeredHost.rpKey, preferences.videoProfile,
+				startStream(host, ConnectInfo(host.isPS5, host.host, registeredHost.rpRegistKey, registeredHost.rpKey, preferences.videoProfile,
 					enableDualSense = host.isPS5 && preferences.dualSenseEnabled))
 			}
 
@@ -421,16 +442,75 @@ class MainActivity : AppCompatActivity()
 	override fun onNewIntent(intent: Intent)
 	{
 		super.onNewIntent(intent)
-		connectHostMac = intent.getLongExtra(EXTRA_CONNECT_HOST_MAC, -1).takeIf { it >= 0 }
-		viewModel.displayHosts.value?.let { connectRegisteredHost(it) }
+		connectHostFromIntent(intent)
 	}
 
+	private val connectHostHandler = Handler(Looper.getMainLooper())
+	private var connectHostDialog: AlertDialog? = null
+	private var connectHostName: String? = null
+	private val connectHostTimeout = Runnable {
+		val name = connectHostName
+		stopConnectHost()
+		val message = getString(R.string.connect_host_not_found, name ?: getString(R.string.connect_host_your_console)) +
+			(if(PsnAccount(this).isSignedIn) "" else "\n\n" + getString(R.string.connect_host_not_found_psn))
+		MaterialAlertDialogBuilder(this)
+			.setMessage(message)
+			.setPositiveButton(android.R.string.ok, null)
+			.show()
+	}
+
+	/** After registration, or to play a console from a shortcut, the tile or the widget */
+	private fun connectHostFromIntent(intent: Intent)
+	{
+		val mac = intent.getLongExtra(EXTRA_CONNECT_HOST_MAC, -1).takeIf { it >= 0 } ?: return
+		stopConnectHost()
+		stopWakeupConnect()
+		connectHostMac = mac
+		connectHostName = intent.getStringExtra(EXTRA_CONNECT_HOST_NAME)
+		viewModel.discoveryManager.active = true
+		viewModel.displayHosts.value?.let { connectRegisteredHost(it) }
+		if(connectHostMac == null)
+			return
+		connectHostDialog = MaterialAlertDialogBuilder(this)
+			.setMessage(getString(R.string.connect_host_looking, connectHostName ?: getString(R.string.connect_host_your_console)))
+			.setNegativeButton(R.string.action_connect_cancel_connect) { _, _ -> stopConnectHost() }
+			.setOnCancelListener { stopConnectHost() }
+			.show()
+		connectHostHandler.postDelayed(connectHostTimeout, CONNECT_HOST_TIMEOUT_MS)
+	}
+
+	private fun stopConnectHost()
+	{
+		connectHostHandler.removeCallbacks(connectHostTimeout)
+		connectHostMac = null
+		connectHostName = null
+		connectHostDialog?.dismiss()
+		connectHostDialog = null
+	}
+
+	/**
+	 * Connects once the console is listed: preferably as discovery found it at home, which tells
+	 * whether it has to be woken up, otherwise by its address or through PSN.
+	 */
 	private fun connectRegisteredHost(hosts: List<DisplayHost>)
 	{
 		val mac = connectHostMac ?: return
-		val host = hosts.firstOrNull { it.registeredHost?.serverMac?.value == mac } ?: return
-		connectHostMac = null
-		hostTriggered(host)
+		val matches = hosts.filter { it.registeredHost?.serverMac?.value == mac }
+		val host = matches.firstOrNull { it is DiscoveredDisplayHost }
+			?: matches.firstOrNull().takeIf { viewModel.isLocalSearchDone }
+			?: return
+		stopConnectHost()
+		if(host is DiscoveredDisplayHost && host.discoveredHost.state == DiscoveryHost.State.STANDBY)
+			wakeupAndConnect(host)
+		else
+			hostTriggered(host)
+	}
+
+	private fun addToHomeScreen(host: DisplayHost)
+	{
+		val registeredHost = host.registeredHost ?: return
+		if(!ConsoleShortcuts.pin(this, ConsoleShortcuts.console(registeredHost, host.name)))
+			Toast.makeText(this, R.string.shortcut_pin_failed, Toast.LENGTH_LONG).show()
 	}
 
 	private fun wakeupHost(host: DisplayHost)

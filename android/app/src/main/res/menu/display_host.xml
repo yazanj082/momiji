@@ -4,6 +4,8 @@
         android:title="@string/action_wakeup"/>
     <item android:id="@+id/action_rest_mode"
         android:title="@string/action_rest_mode"/>
+    <item android:id="@+id/action_add_to_home_screen"
+        android:title="@string/action_add_to_home_screen"/>
     <item android:id="@+id/action_register_again"
         android:title="@string/action_register_again"/>
     <item android:id="@+id/action_remove_registration"
