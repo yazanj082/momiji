@@ -3,6 +3,7 @@
 package com.metallic.chiaki.session
 
 import android.graphics.SurfaceTexture
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -37,6 +38,7 @@ class StreamSession(val connectInfo: ConnectInfo, val logManager: LogManager, va
 
 	private val mainHandler = Handler(Looper.getMainLooper())
 	private val dualSenseFeedback = if(connectInfo.enableDualSense) DualSenseFeedback() else null
+	private val controllerLights = if(connectInfo.enableDualSense && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) ControllerLights() else null
 	private var consoleRumble = RumbleEvent(0U, 0U)
 	private var hapticsRumble = HapticsEvent(0, 0)
 	private var hapticIntensity = DualSenseIntensity.STRONG
@@ -68,6 +70,7 @@ class StreamSession(val connectInfo: ConnectInfo, val logManager: LogManager, va
 		session = null
 		_state.value = StreamStateIdle
 		dualSenseFeedback?.reset()
+		controllerLights?.close()
 		mainHandler.removeCallbacks(hapticsTimeout)
 		consoleRumble = RumbleEvent(0U, 0U)
 		hapticsRumble = HapticsEvent(0, 0)
@@ -94,6 +97,7 @@ class StreamSession(val connectInfo: ConnectInfo, val logManager: LogManager, va
 	fun onInputDevicesChanged()
 	{
 		dualSenseFeedback?.rescan()
+		controllerLights?.rescan()
 	}
 
 	private fun updateRumble()
@@ -202,7 +206,11 @@ class StreamSession(val connectInfo: ConnectInfo, val logManager: LogManager, va
 			is TriggerEffectsEvent -> dualSenseFeedback?.setTriggerEffects(event.typeLeft, event.typeRight, event.left, event.right)
 			is TriggerIntensityEvent -> dualSenseFeedback?.setTriggerIntensity(event.intensity)
 			is CantDisplayEvent -> _cantDisplay.postValue(event.cantDisplay)
-			is LedColorEvent -> dualSenseFeedback?.setLightbar(event.red, event.green, event.blue)
+			is LedColorEvent ->
+			{
+				dualSenseFeedback?.setLightbar(event.red, event.green, event.blue)
+				controllerLights?.let { postWhileRunning { it.setColor(event.red, event.green, event.blue) } }
+			}
 		}
 	}
 
