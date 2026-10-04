@@ -33,6 +33,7 @@ import com.metallic.chiaki.touchcontrols.TouchControlsFragment
 import com.metallic.chiaki.settings.SettingsActivity
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.addTo
+import java.util.Locale
 import kotlin.math.roundToInt
 
 private sealed class DialogContents
@@ -369,10 +370,12 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		statsLastFrames = stats.framesRendered
 		statsLastTimeMs = now
 		val profile = viewModel.session.connectInfo.videoProfile
+		// Technical figures, in the same digits in every language
+		fun format(id: Int, vararg args: Any) = String.format(Locale.ROOT, getString(id), *args)
 		binding.statsTextView.text = listOf(
-			getString(R.string.stream_stats_video, profile.width, profile.height, fps),
-			getString(R.string.stream_stats_network, stats.bitrateMbps, stats.packetLoss * 100f, stats.pingMs),
-			getString(R.string.stream_stats_decode, stats.decodeMsAverage, stats.decodeMsMax)
+			format(R.string.stream_stats_video, profile.width, profile.height, fps),
+			format(R.string.stream_stats_network, stats.bitrateMbps, stats.packetLoss * 100f, stats.pingMs),
+			format(R.string.stream_stats_decode, stats.decodeMsAverage, stats.decodeMsMax)
 		).joinToString("\n")
 	}
 

@@ -1,13 +1,13 @@
 <resources>
-    <string name="app_name">Momiji</string>
+    <string name="app_name" translatable="false">Momiji</string>
     <string name="title_settings">Settings</string>
-    <string name="alert_message_standby_wakeup">The Console is currently in standby mode. Do you want to wake it up and connect as soon as it is ready, instead of trying to connect immediately?</string>
+    <string name="alert_message_standby_wakeup">The console is in rest mode. Wake it up and connect as soon as it\'s ready, instead of connecting right away?</string>
     <string name="alert_message_session_quit">Session has quit: %s</string>
     <string name="alert_message_session_create_error">Failed to create Session: %s</string>
     <string name="alert_message_login_pin_request">Login PIN:</string>
     <string name="alert_message_login_pin_request_incorrect">Entered PIN was incorrect!\nLogin PIN:</string>
     <string name="action_reconnect">Reconnect</string>
-    <string name="action_wakeup">Wakeup</string>
+    <string name="action_wakeup">Wake up</string>
     <string name="action_wakeup_connect">Wake up &amp; Connect</string>
     <string name="wakeup_connect_waiting">Waking up %s…\nThe stream starts as soon as it is ready.</string>
     <string name="wakeup_connect_timeout">The console did not wake up</string>
@@ -21,6 +21,7 @@
     <string name="stream_cant_display">The console doesn\'t allow streaming what it shows right now, the picture comes back when it\'s over</string>
     <string name="action_stream_menu_resume">Resume</string>
     <string name="stream_stats_toggle">Statistics</string>
+    <string name="stream_on_screen_controls">On-screen controls</string>
     <string name="action_show_stats">Show statistics</string>
     <string name="action_hide_stats">Hide statistics</string>
     <string name="stream_stats_video">%1$d×%2$d · %3$.0f fps</string>
@@ -31,7 +32,7 @@
     <string name="action_settings">Settings</string>
     <string name="action_discover">Search for consoles automatically</string>
     <string name="action_discover_short">Search my network</string>
-    <string name="display_host_details">%1$s · %2$s</string>
+    <string name="display_host_details" translatable="false">%1$s · %2$s</string>
     <string name="display_host_playing">Playing %s</string>
     <string name="display_host_not_registered">Not registered yet</string>
     <string name="display_host_state_ready">Ready</string>
@@ -81,7 +82,7 @@
     <string name="regist_option_ps4_lt_7">PS4 &lt; 7.0</string>
     <string name="regist_option_ps4_ge_7">PS4 ≥ 7.0, &lt; 8</string>
     <string name="regist_option_ps4_ge_8">PS4 ≥ 8.0</string>
-    <string name="regist_option_ps5">PS5</string>
+    <string name="regist_option_ps5" translatable="false">PS5</string>
     <string name="action_psn_sign_in">Sign in with Sony</string>
     <string name="psn_sign_in_info">Momiji only reads your Account ID and keeps nothing else.</string>
     <string name="title_psn_sign_in">PlayStation Network sign-in</string>
@@ -180,7 +181,7 @@
     <string name="preferences_logs_title">Session Logs</string>
     <string name="preferences_logs_summary">Collected log files from previous sessions for debugging</string>
     <string name="preferences_export_settings_title">Export Settings</string>
-    <string name="preferences_export_settings_summary">Warning: These resulting file can contain your secret Remote Play keys! Do not share them.</string>
+    <string name="preferences_export_settings_summary">Warning: the file contains your secret Remote Play keys. Don\'t share it.</string>
     <string name="preferences_import_settings_title">Import Settings</string>
     <string name="preferences_import_settings_summary">Import Settings from JSON</string>
     <string name="preferences_registered_hosts_summary">Currently registered: %d</string>
@@ -190,14 +191,14 @@
     <string name="preferences_codec_title">Codec</string>
     <string name="preferences_log_verbose_title">Verbose Logging</string>
     <string name="preferences_log_verbose_summary">Warning: This logs a LOT! Don\'t enable for regular use.</string>
-    <string name="preferences_resolution_title_360p">360p</string>
-    <string name="preferences_resolution_title_540p">540p</string>
-    <string name="preferences_resolution_title_720p">720p</string>
-    <string name="preferences_resolution_title_1080p">1080p</string>
-    <string name="preferences_fps_title_30">30</string>
-    <string name="preferences_fps_title_60">60</string>
+    <string name="preferences_resolution_title_360p" translatable="false">360p</string>
+    <string name="preferences_resolution_title_540p" translatable="false">540p</string>
+    <string name="preferences_resolution_title_720p" translatable="false">720p</string>
+    <string name="preferences_resolution_title_1080p" translatable="false">1080p</string>
+    <string name="preferences_fps_title_30" translatable="false">30</string>
+    <string name="preferences_fps_title_60" translatable="false">60</string>
     <string name="preferences_bitrate_auto">Auto (%d)</string>
-    <string name="preferences_codec_title_h264">H264</string>
+    <string name="preferences_codec_title_h264" translatable="false">H264</string>
     <string name="preferences_codec_title_h265">H265 (PS5 only)</string>
     <string name="preferences_debanding_title">Smooth gradients</string>
     <string name="preferences_debanding_summary">Hides color banding in dark scenes, but adds a little delay</string>
@@ -229,10 +230,10 @@
     <string name="button_circle">Circle</string>
     <string name="button_square">Square</string>
     <string name="button_triangle">Triangle</string>
-    <string name="button_l1">L1</string>
-    <string name="button_r1">R1</string>
-    <string name="button_l2">L2</string>
-    <string name="button_r2">R2</string>
+    <string name="button_l1" translatable="false">L1</string>
+    <string name="button_r1" translatable="false">R1</string>
+    <string name="button_l2" translatable="false">L2</string>
+    <string name="button_r2" translatable="false">R2</string>
     <string name="button_l3">L3 (left stick press)</string>
     <string name="button_r3">R3 (right stick press)</string>
     <string name="button_options">Options</string>
@@ -259,6 +260,11 @@
     <string name="preferences_test_rumble_title">Test Controller Vibration</string>
     <string name="preferences_test_rumble_summary">Vibrate connected controllers and show whether this phone supports their vibration</string>
     <string name="test_rumble_no_controllers">No game controller is connected.</string>
+    <string name="test_rumble_no_motors">no vibration motors that Android can use</string>
+    <plurals name="test_rumble_motors">
+        <item quantity="one">%d vibration motor</item>
+        <item quantity="other">%d vibration motors</item>
+    </plurals>
     <string name="test_rumble_unsupported_note">Controllers without vibration motors exposed by Android cannot vibrate in any app on this phone. This depends on the phone\'s system software and the controller\'s firmware.</string>
     <string name="rumble_controller_cannot_vibrate">The console sent vibration, but this phone does not expose vibration for %1$s</string>
     <string name="preferences_motion_enabled_title">Motion</string>
@@ -270,11 +276,13 @@
     <string name="preferences_dualsense_enabled_summary">Adaptive triggers, lightbar and haptics, which are played as vibration. Adaptive triggers need a DualSense and access to its HID device</string>
     <string name="preferences_controller_headphones_title">Headphones on the Controller</string>
     <string name="preferences_controller_headphones_summary">Play the sound on headphones plugged into a DualSense or DualShock 4 connected by USB. Otherwise it plays on the TV, or the phone\'s speaker</string>
+    <string name="preferences_touchscreen_touchpad_title">Touchscreen as touchpad</string>
+    <string name="preferences_touchscreen_touchpad_summary">Use the stream area as a touchpad</string>
     <string name="preferences_button_haptic_enabled_title">Touch Haptics</string>
     <string name="preferences_button_haptic_enabled_summary">Use phone vibration motor for short haptic feedback on button touches</string>
     <string name="action_rest_mode">Put in rest mode</string>
-    <string name="feedback_email">momiji.yallav@gmail.com</string>
-    <string name="issues_url">https://github.com/yazanj082/momiji/issues</string>
+    <string name="feedback_email" translatable="false">momiji.yallav@gmail.com</string>
+    <string name="issues_url" translatable="false">https://github.com/yazanj082/momiji/issues</string>
     <string name="preferences_about_feedback_title">Send feedback</string>
     <string name="preferences_about_feedback_summary">Report a problem or suggest an idea by email</string>
     <string name="feedback_subject">Momiji %s feedback</string>
@@ -305,26 +313,26 @@
     <string name="preferences_category_title_about">About</string>
     <string name="preferences_about_version">Version %s · Free and open source under the AGPL-3.0 license</string>
     <string name="preferences_about_source_title">Source code</string>
-    <string name="preferences_about_source_summary">github.com/yazanj082/momiji</string>
+    <string name="preferences_about_source_summary" translatable="false">github.com/yazanj082/momiji</string>
     <string name="preferences_about_credits_title">Based on Chiaki</string>
     <string name="preferences_about_credits_summary">Built on Chiaki by Florian Märkl, chiaki-ng by Street Pea and the Android version by SalamiTheMan, with all their contributors. Momiji is not affiliated with Sony Interactive Entertainment.</string>
 
     <!-- Don't localize these -->
-    <string name="preferences_discovery_enabled_key">discovery_enabled</string>
-    <string name="preferences_on_screen_controls_enabled_key">on_screen_controls_enabled</string>
-    <string name="preferences_rumble_enabled_key">rumble_enabled</string>
-    <string name="preferences_motion_enabled_key">motion_enabled</string>
-    <string name="preferences_dualsense_enabled_key">dualsense_enabled</string>
-    <string name="preferences_controller_headphones_key">controller_headphones</string>
-    <string name="preferences_home_screen_key">home_screen</string>
-    <string name="preferences_button_haptic_enabled_key">button_haptic_enabled</string>
-    <string name="preferences_log_verbose_key">log_verbose</string>
-    <string name="preferences_import_settings_key">import_settings</string>
-    <string name="preferences_export_settings_key">export_settings</string>
-    <string name="preferences_swap_cross_moon_key">swap_cross_moon</string>
-    <string name="preferences_resolution_key">stream_resolution</string>
-    <string name="preferences_fps_key">stream_fps</string>
-    <string name="preferences_bitrate_key">stream_bitrate</string>
-    <string name="preferences_codec_key">stream_codec</string>
-    <string name="preferences_debanding_key">stream_debanding</string>
+    <string name="preferences_discovery_enabled_key" translatable="false">discovery_enabled</string>
+    <string name="preferences_on_screen_controls_enabled_key" translatable="false">on_screen_controls_enabled</string>
+    <string name="preferences_rumble_enabled_key" translatable="false">rumble_enabled</string>
+    <string name="preferences_motion_enabled_key" translatable="false">motion_enabled</string>
+    <string name="preferences_dualsense_enabled_key" translatable="false">dualsense_enabled</string>
+    <string name="preferences_controller_headphones_key" translatable="false">controller_headphones</string>
+    <string name="preferences_home_screen_key" translatable="false">home_screen</string>
+    <string name="preferences_button_haptic_enabled_key" translatable="false">button_haptic_enabled</string>
+    <string name="preferences_log_verbose_key" translatable="false">log_verbose</string>
+    <string name="preferences_import_settings_key" translatable="false">import_settings</string>
+    <string name="preferences_export_settings_key" translatable="false">export_settings</string>
+    <string name="preferences_swap_cross_moon_key" translatable="false">swap_cross_moon</string>
+    <string name="preferences_resolution_key" translatable="false">stream_resolution</string>
+    <string name="preferences_fps_key" translatable="false">stream_fps</string>
+    <string name="preferences_bitrate_key" translatable="false">stream_bitrate</string>
+    <string name="preferences_codec_key" translatable="false">stream_codec</string>
+    <string name="preferences_debanding_key" translatable="false">stream_debanding</string>
 </resources>

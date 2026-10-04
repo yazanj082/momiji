@@ -16,6 +16,8 @@ import android.os.VibratorManager
 import android.view.InputDevice
 import androidx.annotation.RequiresApi
 import kotlin.math.min
+import com.metallic.chiaki.R
+import java.util.Locale
 
 /**
  * Plays the console's rumble on the controller that is being used.
@@ -130,15 +132,13 @@ class ControllerRumble(private val context: Context)
 
 	class ControllerInfo(val name: String, val vendorId: Int, val productId: Int, val motors: Int)
 	{
-		override fun toString(): String
+		fun describe(context: Context): String
 		{
-			val support = when(motors)
-			{
-				0 -> "no vibration motors exposed by Android"
-				1 -> "1 vibration motor"
-				else -> "$motors vibration motors"
-			}
-			return "$name (${String.format("%04x:%04x", vendorId, productId)}): $support"
+			val support = if(motors == 0)
+				context.getString(R.string.test_rumble_no_motors)
+			else
+				context.resources.getQuantityString(R.plurals.test_rumble_motors, motors, motors)
+			return "$name (${String.format(Locale.ROOT, "%04x:%04x", vendorId, productId)}): $support"
 		}
 	}
 

@@ -67,8 +67,8 @@
 
         <SwitchPreference
             app:key="preferences_touchscreen_touchpad_enabled"
-            app:title="Touchscreen as Touchpad"
-            app:summary="Use the stream area as a touchpad"
+            app:title="@string/preferences_touchscreen_touchpad_title"
+            app:summary="@string/preferences_touchscreen_touchpad_summary"
             app:defaultValue="false"
             app:icon="@drawable/ic_gamepad" />
 

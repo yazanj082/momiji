@@ -52,6 +52,7 @@
 
         <TextView
             android:id="@+id/nameTextView"
+            android:textAlignment="viewStart"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
@@ -68,6 +69,7 @@
 
         <TextView
             android:id="@+id/hostTextView"
+            android:textAlignment="viewStart"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="6dp"
@@ -82,6 +84,7 @@
 
         <TextView
             android:id="@+id/bottomInfoTextView"
+            android:textAlignment="viewStart"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="6dp"

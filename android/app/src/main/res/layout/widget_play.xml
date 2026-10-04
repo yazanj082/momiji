@@ -29,6 +29,7 @@
 
         <TextView
             android:id="@+id/widgetTitle"
+            android:textAlignment="viewStart"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:ellipsize="end"
@@ -40,6 +41,7 @@
 
         <TextView
             android:id="@+id/widgetSubtitle"
+            android:textAlignment="viewStart"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:ellipsize="end"

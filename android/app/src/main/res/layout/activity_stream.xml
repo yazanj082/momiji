@@ -108,9 +108,9 @@
                 android:layout_height="wrap_content"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent"
-                android:text="On-Screen Controls"
+                android:text="@string/stream_on_screen_controls"
                 app:switchPadding="8dp"
-                android:layout_marginLeft="8dp"
+                android:layout_marginStart="8dp"
                 android:textColor="@color/stream_text"/>
 
             <com.google.android.material.switchmaterial.SwitchMaterial

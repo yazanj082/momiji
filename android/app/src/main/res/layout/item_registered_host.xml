@@ -27,6 +27,7 @@
 
     <TextView
         android:id="@+id/nameTextView"
+        android:textAlignment="viewStart"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:singleLine="true"
@@ -44,6 +45,7 @@
 
     <TextView
         android:id="@+id/summaryTextView"
+        android:textAlignment="viewStart"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@android:id/title"

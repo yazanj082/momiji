@@ -267,7 +267,7 @@ class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 		val message = if(controllers.isEmpty())
 			getString(R.string.test_rumble_no_controllers)
 		else
-			controllers.joinToString("\n\n") +
+			controllers.joinToString("\n\n") { it.describe(context) } +
 					(if(controllers.any { it.motors == 0 }) "\n\n" + getString(R.string.test_rumble_unsupported_note) else "")
 		MaterialAlertDialogBuilder(context)
 			.setTitle(R.string.preferences_test_rumble_title)
