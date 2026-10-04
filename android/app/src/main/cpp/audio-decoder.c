@@ -64,6 +64,10 @@ static void *android_chiaki_audio_decoder_output_thread_func(void *user)
 {
 	AndroidChiakiAudioDecoder *decoder = user;
 
+	// Feeds the audio output, which crackles when this falls behind
+	if(chiaki_thread_set_current_nice(-16) != CHIAKI_ERR_SUCCESS)
+		CHIAKI_LOGW(decoder->log, "Audio decoder failed to raise its output thread's priority");
+
 	while(1)
 	{
 		AMediaCodecBufferInfo info;

@@ -245,6 +245,10 @@ static void *feedback_sender_thread_func(void *user)
 {
 	ChiakiFeedbackSender *feedback_sender = user;
 
+	// Sends the controller's input, whose delay players feel the most
+	if(chiaki_thread_set_current_nice(-8) != CHIAKI_ERR_SUCCESS)
+		CHIAKI_LOGW(feedback_sender->log, "Feedback Sender failed to raise its thread priority");
+
 	ChiakiErrorCode err = chiaki_mutex_lock(&feedback_sender->state_mutex);
 	if(err != CHIAKI_ERR_SUCCESS)
 		return NULL;

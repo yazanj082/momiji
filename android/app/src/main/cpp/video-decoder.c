@@ -303,6 +303,10 @@ static void track_latency(AndroidChiakiVideoDecoder *decoder,
 static void *android_chiaki_video_decoder_output_thread_func(void *user) {
   AndroidChiakiVideoDecoder *decoder = user;
 
+  // Puts the decoded frames on the screen
+  if (chiaki_thread_set_current_nice(-8) != CHIAKI_ERR_SUCCESS)
+    CHIAKI_LOGW(decoder->log, "Video decoder failed to raise its output thread's priority");
+
   while (1) {
     AMediaCodecBufferInfo info;
     ssize_t status = AMediaCodec_dequeueOutputBuffer(decoder->codec, &info, -1);

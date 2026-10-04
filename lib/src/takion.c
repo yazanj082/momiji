@@ -916,6 +916,10 @@ static void *takion_thread_func(void *user)
 {
 	ChiakiTakion *takion = user;
 
+	// Receives the stream: a late packet is a late frame
+	if(chiaki_thread_set_current_nice(-8) != CHIAKI_ERR_SUCCESS)
+		CHIAKI_LOGW(takion->log, "Takion failed to raise its thread priority");
+
 	uint32_t seq_num_remote_initial;
 	if(takion_handshake(takion, &seq_num_remote_initial) != CHIAKI_ERR_SUCCESS)
 		goto beach;

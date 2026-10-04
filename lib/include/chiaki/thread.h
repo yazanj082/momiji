@@ -37,6 +37,13 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_thread_join(ChiakiThread *thread, void **re
 CHIAKI_EXPORT ChiakiErrorCode chiaki_thread_timedjoin(ChiakiThread *thread, void **retval, uint64_t timeout_ms);
 CHIAKI_EXPORT ChiakiErrorCode chiaki_thread_set_name(ChiakiThread *thread, const char *name);
 
+/**
+ * Makes the calling thread more important to the scheduler, for the threads that carry the stream.
+ * Only on Android, where apps may raise their own threads' priority; elsewhere it does nothing.
+ * @param nice Linux nice value, lower is more important (Android uses -8 for display, -16 for audio)
+ */
+CHIAKI_EXPORT ChiakiErrorCode chiaki_thread_set_current_nice(int nice);
+
 
 typedef struct chiaki_mutex_t
 {

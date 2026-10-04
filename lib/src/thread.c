@@ -13,6 +13,10 @@
 #include <switch.h>
 #endif
 
+#ifdef __ANDROID__
+#include <sys/resource.h>
+#endif
+
 #if _WIN32
 static DWORD WINAPI win32_thread_func(LPVOID param)
 {
@@ -93,6 +97,18 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_thread_set_name(ChiakiThread *thread, const
 	(void)thread;
 	(void)name;
 #endif
+#endif
+	return CHIAKI_ERR_SUCCESS;
+}
+
+CHIAKI_EXPORT ChiakiErrorCode chiaki_thread_set_current_nice(int nice)
+{
+#ifdef __ANDROID__
+	// On Linux, nice applies to the calling thread only
+	if(setpriority(PRIO_PROCESS, 0, nice) != 0)
+		return CHIAKI_ERR_UNKNOWN;
+#else
+	(void)nice;
 #endif
 	return CHIAKI_ERR_SUCCESS;
 }
