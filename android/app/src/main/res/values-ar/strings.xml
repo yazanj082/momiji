@@ -123,14 +123,14 @@
     <string name="internet_play_sign_in">تسجيل الدخول بحساب Sony</string>
     <string name="internet_play_sign_in_summary">للوصول إلى أجهزة ألعابك عبر PlayStation Network</string>
     <string name="internet_play_signed_in">تم تسجيل الدخول</string>
-    <string name="internet_play_signed_in_summary">تظهر في الشاشة الرئيسية أجهزة الألعاب المسجّلة التي ليست على هذه الشبكة.</string>
+    <string name="internet_play_signed_in_summary">تظهر أجهزة ألعابك في الشاشة الرئيسية عندما لا تكون على هذه الشبكة.</string>
     <string name="internet_play_signed_in_toast">تم تسجيل الدخول. يمكنك الآن اللعب على أجهزة ألعابك خارج المنزل.</string>
     <string name="internet_play_sign_out">تسجيل الخروج</string>
     <string name="internet_play_sign_out_summary">يحذف تسجيل الدخول من هذا الجهاز</string>
     <string name="internet_play_sign_out_confirm">هل تريد تسجيل الخروج من PlayStation Network؟ سيحتاج اللعب خارج المنزل بعدها إلى تسجيل دخول جديد.</string>
     <string name="internet_play_about">طريقة العمل</string>
     <string name="internet_play_how_title">خارج المنزل</string>
-    <string name="internet_play_how">تظهر أجهزة الألعاب التي سجّلتها في الشاشة الرئيسية عندما لا تكون على الشبكة نفسها التي عليها هذا الجهاز. ويتصل بها Momiji عندئذٍ عبر PlayStation Network، كما يفعل تطبيق اللعب عن بُعد الرسمي، ويشغّلها من وضع الراحة.</string>
+    <string name="internet_play_how">تظهر أجهزة الألعاب المرتبطة بحسابك على PSN في الشاشة الرئيسية عندما لا تكون على الشبكة نفسها التي عليها هذا الجهاز. ويتصل بها Momiji عندئذٍ عبر PlayStation Network، كما يفعل تطبيق اللعب عن بُعد الرسمي، ويشغّلها من وضع الراحة.</string>
     <string name="internet_play_console_title">على جهاز الألعاب</string>
     <string name="internet_play_console">فعّل اللعب عن بُعد. ومن أجل وضع الراحة، فعّل أيضًا «البقاء متصلًا بالإنترنت» و«تمكين تشغيل جهاز PS5 من الشبكة» في إعدادات توفير الطاقة. ولا يمكن الوصول إلى جهاز PS4 إلا إذا كان جهاز PS4 الأساسي في حسابك.</string>
     <string name="internet_play_privacy_title">تسجيل دخولك</string>

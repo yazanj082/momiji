@@ -66,7 +66,7 @@ class DisplayHostRecyclerViewAdapter(
 			val name = host.name ?: host.host
 			it.nameTextView.text = name
 			// Only discovery or registration tell which console it is
-			val consoleType = if(host is DiscoveredDisplayHost || host.isRegistered) (if(host.isPS5) "PS5" else "PS4") else null
+			val consoleType = if(host is DiscoveredDisplayHost || host is PsnDisplayHost || host.isRegistered) (if(host.isPS5) "PS5" else "PS4") else null
 			it.hostTextView.text = when
 			{
 				consoleType == null -> context.getString(R.string.display_host_not_registered)
@@ -99,7 +99,7 @@ class DisplayHostRecyclerViewAdapter(
 
 			val (actionText, actionIcon) = when
 			{
-				!host.isRegistered -> R.string.action_register_short to R.drawable.ic_link
+				!host.isRegistered && host !is PsnDisplayHost -> R.string.action_register_short to R.drawable.ic_link
 				state == DiscoveryHost.State.STANDBY -> R.string.action_wakeup_play to R.drawable.ic_power
 				else -> R.string.action_play to R.drawable.ic_play
 			}

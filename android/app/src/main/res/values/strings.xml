@@ -129,14 +129,14 @@
     <string name="internet_play_sign_in">Sign in with Sony</string>
     <string name="internet_play_sign_in_summary">To reach your consoles through PlayStation Network</string>
     <string name="internet_play_signed_in">Signed in</string>
-    <string name="internet_play_signed_in_summary">Registered consoles that aren\'t on this network show up on the main screen.</string>
+    <string name="internet_play_signed_in_summary">Your consoles show up on the main screen when they aren\'t on this network.</string>
     <string name="internet_play_signed_in_toast">Signed in. Your consoles can now be played away from home.</string>
     <string name="internet_play_sign_out">Sign out</string>
     <string name="internet_play_sign_out_summary">Deletes the sign-in from this device</string>
     <string name="internet_play_sign_out_confirm">Sign out of PlayStation Network? Playing away from home needs a new sign-in afterwards.</string>
     <string name="internet_play_about">How it works</string>
     <string name="internet_play_how_title">Away from home</string>
-    <string name="internet_play_how">Consoles you registered show up on the main screen when they aren\'t on the same network as this device. Momiji then connects to them through PlayStation Network, like the official Remote Play app, and wakes them up from rest mode.</string>
+    <string name="internet_play_how">The consoles of your PSN account show up on the main screen when they aren\'t on the same network as this device. Momiji then connects to them through PlayStation Network, like the official Remote Play app, and wakes them up from rest mode.</string>
     <string name="internet_play_console_title">On your console</string>
     <string name="internet_play_console">Turn on Remote Play. For rest mode, also turn on \"Stay connected to the internet\" and \"Enable turning on PS5 from network\" in the power saving settings. A PS4 can only be reached if it is the primary PS4 of your account.</string>
     <string name="internet_play_privacy_title">Your sign-in</string>

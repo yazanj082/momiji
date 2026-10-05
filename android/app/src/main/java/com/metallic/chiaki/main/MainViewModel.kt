@@ -86,16 +86,14 @@ class MainViewModel(val database: AppDatabase, val preferences: Preferences, val
 
 	val discoveryActive = discoveryManager.discoveryActive.toLiveData()
 
-	val hasRegisteredHosts = database.registeredHostDao().count().map { it > 0 }.toLiveData()
-
 	val registeredHosts = database.registeredHostDao().getAll().toLiveData()
 
 	/** Whether discovery had the time to find consoles here */
 	val isLocalSearchDone get() = localSearchDone.value == true
 
 	/**
-	 * The registered consoles that discovery doesn't find here but PSN can reach, matched by name.
-	 * With one PS5 on each side, the names don't have to match, as the console may have been renamed.
+	 * The PS5s of the PSN account with Remote Play on that discovery doesn't find here. Connecting
+	 * through PSN needs no registration here; one with the same name gives the console its settings.
 	 */
 	private fun psnDisplayHosts(registeredHosts: List<RegisteredHost>, discoveredHosts: List<DiscoveryHost>, devices: List<HolepunchDevice>): List<PsnDisplayHost>
 	{
@@ -104,12 +102,9 @@ class MainViewModel(val database: AppDatabase, val preferences: Preferences, val
 		// Registering again adds another registration of the same console
 		val registered = registeredHosts.sortedByDescending { it.id }.distinctBy { it.serverMac }
 		val registeredPS5 = registered.filter { it.target.isPS5 }
-		val enabledPS5 = devices.filter { it.ps5 && it.remotePlayEnabled }
-		val hosts = enabledPS5.mapNotNull { device ->
+		val hosts = devices.filter { it.ps5 && it.remotePlayEnabled }.mapNotNull { device ->
 			val registeredHost = registeredPS5.firstOrNull { it.serverNickname == device.asciiName || it.serverNickname == device.name }
-				?: registeredPS5.singleOrNull()?.takeIf { enabledPS5.size == 1 }
-				?: return@mapNotNull null
-			if(registeredHost.serverMac in discoveredMacs || device.asciiName in discoveredNames)
+			if(device.asciiName in discoveredNames || (registeredHost != null && registeredHost.serverMac in discoveredMacs))
 				return@mapNotNull null
 			PsnDisplayHost(registeredHost, device.name, device.uid, true)
 		}

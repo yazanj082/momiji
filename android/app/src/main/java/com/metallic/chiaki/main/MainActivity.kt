@@ -62,6 +62,8 @@ class MainActivity : AppCompatActivity()
 		const val ACTION_PLAY = BuildConfig.APPLICATION_ID + ".action.PLAY"
 		/** Discovery, waking up and PSN take a while, but not this long */
 		private const val CONNECT_HOST_TIMEOUT_MS = 25000L
+		/** Of the registration key and morning a session gets */
+		private const val SESSION_KEY_SIZE = 0x10
 
 		/** Plays the registered console, from shortcuts, the tile and the widget */
 		fun playIntent(context: Context, mac: Long, name: String?) = Intent(context, MainActivity::class.java)
@@ -141,7 +143,6 @@ class MainActivity : AppCompatActivity()
 			discoveryMenuItem?.let { updateDiscoveryMenuItem(it, active) }
 			updateEmptyInfo()
 		})
-		viewModel.hasRegisteredHosts.observe(this, Observer { updateEmptyInfo() })
 		viewModel.registeredHosts.observe(this, Observer { ConsoleShortcuts.update(this, it) })
 		// Not again when the activity is recreated
 		if(savedInstanceState == null)
@@ -178,8 +179,7 @@ class MainActivity : AppCompatActivity()
 			})
 			binding.emptyDiscoverButton.visibility = if(discoveryActive) View.GONE else View.VISIBLE
 			// Registered consoles that aren't here can be played through PSN
-			binding.emptyInternetPlayButton.visibility =
-				if(viewModel.hasRegisteredHosts.value == true && !viewModel.psnAccount.isSignedIn) View.VISIBLE else View.GONE
+			binding.emptyInternetPlayButton.visibility = if(viewModel.psnAccount.isSignedIn) View.GONE else View.VISIBLE
 		}
 		else
 			binding.emptyInfoLayout.visibility = View.GONE
@@ -343,8 +343,10 @@ class MainActivity : AppCompatActivity()
 		if(host is PsnDisplayHost)
 		{
 			val preferences = Preferences(this)
-			startStream(host, ConnectInfo(host.isPS5, host.host, registeredHost!!.rpRegistKey, registeredHost.rpKey,
-				preferences.videoProfile(registeredHost.serverMac, host.isPS5, away = true),
+			// Registering through PSN gives the session its keys, so these can be empty
+			startStream(host, ConnectInfo(host.isPS5, host.host, registeredHost?.rpRegistKey ?: ByteArray(SESSION_KEY_SIZE),
+				registeredHost?.rpKey ?: ByteArray(SESSION_KEY_SIZE),
+				preferences.videoProfile(registeredHost?.serverMac, host.isPS5, away = true),
 				enableDualSense = host.isPS5 && preferences.dualSenseEnabled, psnConsoleUid = host.consoleUid))
 		}
 		else if(registeredHost != null)

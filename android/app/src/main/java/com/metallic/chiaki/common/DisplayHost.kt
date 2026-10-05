@@ -57,11 +57,13 @@ class ManualDisplayHost(
 	override fun toString() = "ManualDisplayHost{${registeredHost}, ${manualHost}}"
 }
 /**
- * A registered console that isn't on this network, which PSN can connect to.
- * @param registeredHost its registration here. For a PS4, PSN can only reach the account's main PS4.
+ * A console of the PSN account that isn't on this network, which PSN can connect to. Connecting
+ * through PSN registers with the console each time, so it needn't be registered here.
+ * @param registeredHost its registration here, if any, for its settings.
+ * For a PS4, PSN can only reach the account's main PS4.
  */
 class PsnDisplayHost(
-	override val registeredHost: RegisteredHost,
+	override val registeredHost: RegisteredHost?,
 	val consoleName: String,
 	/** The console's id on PSN, 32 bytes */
 	val consoleUid: ByteArray,
@@ -79,7 +81,7 @@ class PsnDisplayHost(
 		else
 			other.consoleUid.contentEquals(consoleUid) && other.registeredHost == registeredHost && other.consoleName == consoleName
 
-	override fun hashCode() = 31 * registeredHost.hashCode() + consoleUid.contentHashCode()
+	override fun hashCode() = 31 * (registeredHost?.hashCode() ?: 0) + consoleUid.contentHashCode()
 
 	override fun toString() = "PsnDisplayHost{${registeredHost}, $consoleName}"
 }
