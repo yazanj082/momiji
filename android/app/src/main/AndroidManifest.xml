@@ -80,6 +80,7 @@
         <activity
             android:name=".stream.StreamActivity"
             android:taskAffinity=".stream"
+            android:autoRemoveFromRecents="true"
             android:theme="@style/StreamTheme"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"

@@ -325,15 +325,11 @@ class MainActivity : AppCompatActivity()
 		host.registeredHost?.let { ConsoleShortcuts.played(this, ConsoleShortcuts.console(it, host.name)) }
 		Intent(this, StreamActivity::class.java).let {
 			it.putExtra(StreamActivity.EXTRA_CONNECT_INFO, connectInfo)
-			// Empty bounds open the stream full screen in Samsung DeX, without the window's title bar.
-			// Launch bounds only apply to new tasks, so the stream gets its own window there.
-			val options = if(isSamsungDex())
-			{
-				it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-				ActivityOptions.makeBasic().setLaunchBounds(Rect()).toBundle()
-			}
-			else
-				null
+			// The stream gets a task of its own, as picture-in-picture didn't start for it on top of
+			// the main screen's task. It leaves the recent apps when it ends.
+			it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+			// Empty bounds open the stream full screen in Samsung DeX, without the window's title bar
+			val options = if(isSamsungDex()) ActivityOptions.makeBasic().setLaunchBounds(Rect()).toBundle() else null
 			startActivity(it, options)
 		}
 	}

@@ -16,10 +16,10 @@ import android.os.*
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.RelativeSizeSpan
+import android.util.Log
 import android.util.Rational
 import android.view.*
 import android.widget.EditText
-import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
@@ -57,6 +57,10 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 {
 	companion object
 	{
+		private const val TAG = "StreamActivity"
+		private const val HINT_SHORT_MS = 2500L
+		private const val HINT_LONG_MS = 4000L
+		private const val HINT_FADE_MS = 150L
 		const val EXTRA_CONNECT_INFO = "connect_info"
 		private const val HIDE_UI_TIMEOUT_MS = 2000L
 		private const val STATS_INTERVAL_MS = 1000L
@@ -163,13 +167,13 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		}
 
 		viewModel.session.state.observe(this, Observer { this.stateChanged(it) })
-		// With a controller, the screen isn't played on, so a tap on the stream shows or hides the
-		// overlay. It only gets taps that no control or touchpad took.
+		// A double tap on the stream shows or hides the overlay, as on the on-screen controls' background.
+		// It only gets taps that no control or touchpad took.
 		val overlayTapDetector = GestureDetector(this, object: GestureDetector.SimpleOnGestureListener()
 		{
 			override fun onDown(e: MotionEvent) = true
 
-			override fun onSingleTapUp(e: MotionEvent): Boolean
+			override fun onDoubleTap(e: MotionEvent): Boolean
 			{
 				toggleOverlay()
 				return true
@@ -180,7 +184,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		binding.root.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updatePictureInPictureParams() }
 		viewModel.session.cantDisplay.observe(this, Observer {
 			if(it)
-				Toast.makeText(this, R.string.stream_cant_display, Toast.LENGTH_LONG).show()
+				showHint(getString(R.string.stream_cant_display), HINT_LONG_MS)
 		})
 		adjustStreamViewAspect()
 
@@ -196,8 +200,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 				if(result == ControllerRumble.Result.CONTROLLER_CANNOT_VIBRATE && !cannotVibrateShown)
 				{
 					cannotVibrateShown = true
-					Toast.makeText(this, getString(R.string.rumble_controller_cannot_vibrate,
-						rumble.controllerName(controllerId) ?: ""), Toast.LENGTH_LONG).show()
+					showHint(getString(R.string.rumble_controller_cannot_vibrate, rumble.controllerName(controllerId) ?: ""), HINT_LONG_MS)
 				}
 			})
 		}
@@ -305,7 +308,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		if(fragment is TouchControlsFragment)
 		{
 			// While the controls are played on, a single tap beside them is usually a missed button
-			fragment.onBackgroundDoubleTap = { showOverlay() }
+			fragment.onBackgroundDoubleTap = { toggleOverlay() }
 			fragment.controllerState
 				.subscribe { 
 					lastFragmentControllerState = it
@@ -418,17 +421,34 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 			setPictureInPictureParams(pictureInPictureParams())
 	}
 
+	/**
+	 * Android 12 and later enter picture-in-picture by themselves when leaving, with the auto-enter
+	 * of the params. Before, and where that doesn't happen, it's entered here.
+	 */
 	override fun onUserLeaveHint()
 	{
 		super.onUserLeaveHint()
-		// From Android 12 on, the params enter it by themselves, with a smoother animation
-		if(Build.VERSION.SDK_INT in Build.VERSION_CODES.O until Build.VERSION_CODES.S && pictureInPictureWanted())
-			enterPictureInPictureMode(pictureInPictureParams())
+		val wanted = pictureInPictureWanted()
+		Log.i(TAG, "Leaving the stream, picture-in-picture wanted: $wanted, already in it: $isInPictureInPictureMode")
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && wanted && !isInPictureInPictureMode)
+		{
+			val entered = try
+			{
+				enterPictureInPictureMode(pictureInPictureParams())
+			}
+			catch(e: IllegalStateException)
+			{
+				Log.w(TAG, "Entering picture-in-picture failed", e)
+				false
+			}
+			Log.i(TAG, "Entering picture-in-picture: $entered")
+		}
 	}
 
 	override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration)
 	{
 		super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+		Log.i(TAG, "Picture-in-picture: $isInPictureInPictureMode")
 		// Closing the small window stops the activity first
 		if(!isInPictureInPictureMode && lifecycle.currentState == Lifecycle.State.CREATED)
 		{
@@ -562,6 +582,27 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 				}
 			})
 		scheduleHideOverlay()
+	}
+
+	/** A small label that fades in and out by itself, over the stream */
+	private fun showHint(text: String, durationMs: Long)
+	{
+		val hint = binding.hintTextView
+		hint.animate().cancel()
+		hint.text = text
+		hint.alpha = 0f
+		hint.isVisible = true
+		hint.animate()
+			.alpha(1f)
+			.setStartDelay(0)
+			.setDuration(HINT_FADE_MS)
+			.withEndAction {
+				hint.animate()
+					.alpha(0f)
+					.setStartDelay(durationMs)
+					.setDuration(HINT_FADE_MS * 2)
+					.withEndAction { hint.isVisible = false }
+			}
 	}
 
 	private fun toggleOverlay()
@@ -720,7 +761,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 				else if(percent <= BATTERY_WARNING_LEVEL && !batteryWarned)
 				{
 					batteryWarned = true
-					Toast.makeText(this@StreamActivity, getString(R.string.controller_battery_low, percent), Toast.LENGTH_SHORT).show()
+					showHint(getString(R.string.controller_battery_low, percent), HINT_SHORT_MS)
 				}
 			}
 			statsHandler.postDelayed(this, BATTERY_CHECK_INTERVAL_MS)
@@ -744,10 +785,14 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 				PsnConnectStep.CONNECTING_CONSOLE -> R.string.psn_connect_connecting_console
 			})
 
-		if(state == StreamStateConnected && !streamMenuHintShown && isControllerConnected())
+		if(state == StreamStateConnected && !streamMenuHintShown)
 		{
 			streamMenuHintShown = true
-			Toast.makeText(this, R.string.stream_menu_hint, Toast.LENGTH_LONG).show()
+			// Not a toast: Android cuts those off after two lines
+			if(isControllerConnected())
+				showHint(getString(R.string.stream_menu_hint) + "\n" + getString(R.string.stream_overlay_hint), HINT_LONG_MS)
+			else
+				showHint(getString(R.string.stream_overlay_hint), HINT_SHORT_MS)
 		}
 
 		when(state)

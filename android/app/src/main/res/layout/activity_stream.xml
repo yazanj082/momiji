@@ -61,6 +61,27 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
 
+    <!-- Hints when the stream starts, which fade out by themselves. Doesn't take touches. -->
+    <TextView
+        android:id="@+id/hintTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="48dp"
+        android:background="@drawable/stream_hint_background"
+        android:gravity="center"
+        android:lineSpacingExtra="2dp"
+        android:maxWidth="560dp"
+        android:paddingStart="16dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="10dp"
+        android:textColor="#F2FFFFFF"
+        android:textSize="14sp"
+        android:visibility="gone" />
+
 
     <!-- Stream statistics, turned on from the stream menu or the overlay. Doesn't take touches. -->
     <FrameLayout

@@ -19,6 +19,7 @@
     <string name="controller_battery_low">Controller battery low: %d%%</string>
     <string name="stream_cant_display">The console doesn\'t allow streaming what it shows right now, the picture comes back when it\'s over</string>
     <string name="action_stream_menu_resume">Resume</string>
+    <string name="stream_overlay_hint">Double-tap the screen for the on-screen controls and the picture size</string>
     <string name="stream_stats_toggle">Statistics</string>
     <string name="stream_on_screen_controls">On-screen controls</string>
     <string name="action_show_stats">Show statistics</string>
@@ -204,8 +205,8 @@
     <string name="preferences_bitrate_auto">Auto (%d)</string>
     <string name="preferences_codec_title_h264" translatable="false">H264</string>
     <string name="preferences_codec_title_h265">H265 (PS5 only)</string>
-    <string name="preferences_pip_title">Picture-in-picture</string>
-    <string name="preferences_pip_summary">When you leave the app, the stream goes on in a small window. Closing it ends the stream.</string>
+    <string name="preferences_pip_title">Picture-in-picture when leaving</string>
+    <string name="preferences_pip_summary">The stream goes on in a small window when you leave the app. Closing the window ends the stream.</string>
     <string name="preferences_quality_title">Quality</string>
     <string name="quality_summary">%1$s: %2$s</string>
     <string name="quality_smooth">Smooth</string>
