@@ -467,6 +467,9 @@ JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject 
 	connect_info.video_profile.codec = (ChiakiCodec)target_value;
 
 	connect_info.video_profile_auto_downgrade = true;
+	// Like chiaki-ng: the console hears of up to 5 % loss and lowers the bitrate on a weak network.
+	// At 0, it was told there was never any loss and kept sending at full rate.
+	connect_info.packet_loss_max = 0.05;
 
 	session = CHIAKI_NEW(AndroidChiakiSession);
 	if(!session)
