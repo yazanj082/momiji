@@ -134,6 +134,8 @@
     <string name="internet_play_how">تظهر أجهزة الألعاب المرتبطة بحسابك على PSN في الشاشة الرئيسية عندما لا تكون على الشبكة نفسها التي عليها هذا الجهاز. ويتصل بها Momiji عندئذٍ عبر PlayStation Network، كما يفعل تطبيق اللعب عن بُعد الرسمي، ويشغّلها من وضع الراحة.</string>
     <string name="internet_play_console_title">على جهاز الألعاب</string>
     <string name="internet_play_console">فعّل اللعب عن بُعد. ومن أجل وضع الراحة، فعّل أيضًا «البقاء متصلًا بالإنترنت» و«تمكين تشغيل جهاز PS5 من الشبكة» في إعدادات توفير الطاقة. ولا يمكن الوصول إلى جهاز PS4 إلا إذا كان جهاز PS4 الأساسي في حسابك.</string>
+    <string name="internet_play_router_title">الراوتر في منزلك</string>
+    <string name="internet_play_router">فعّل UPnP في إعدادات الراوتر. فهو يسمح بمرور الاتصال، وهذا ما تحتاجه كثير من شبكات الهاتف المحمول.</string>
     <string name="internet_play_privacy_title">تسجيل دخولك</string>
     <string name="internet_play_privacy">يبقى تسجيل الدخول على هذا الجهاز ولا يُرسَل إلا إلى Sony، للوصول إلى أجهزة ألعابك. ولا تتضمنه الإعدادات المُصدَّرة، ويحذفه تسجيل الخروج.</string>
     <string name="internet_play_sign_in_expired_title">سجّل الدخول إلى PlayStation Network مجددًا</string>
@@ -148,7 +150,7 @@
     <string name="psn_connect_error_sign_in">سجّل الدخول إلى PlayStation Network مجددًا للعب خارج المنزل.</string>
     <string name="psn_connect_error_psn_unreachable">تعذّر الوصول إلى PlayStation Network. تحقّق من اتصال هذا الجهاز بالإنترنت.</string>
     <string name="psn_connect_error_console_no_answer">لم يستجب جهاز الألعاب. تأكد من أنه يعمل أو في وضع الراحة، ومتصل بالإنترنت، وأن اللعب عن بُعد مفعّل. وفي وضع الراحة، يجب أن يكون «البقاء متصلًا بالإنترنت» مفعّلًا أيضًا.</string>
-    <string name="psn_connect_error_network_blocked">تعذّر فتح اتصال مباشر بجهاز الألعاب. بعض الشبكات تمنعه، مثل بعض شبكات الهاتف المحمول وشبكات Wi-Fi العامة. جرّب شبكة أخرى.</string>
+    <string name="psn_connect_error_network_blocked">تعذّر فتح اتصال مباشر بجهاز الألعاب. تفعيل UPnP في إعدادات الراوتر في منزلك يحل ذلك عادةً. وإلا فجرّب شبكة أخرى: بعض شبكات الهاتف المحمول وشبكات Wi-Fi العامة تمنعه.</string>
     <string name="psn_connect_error_failed">حدث خطأ أثناء الاتصال.</string>
     <string name="hint_regist_psn_online_id">معرّف الاتصال (يميّز الأحرف الكبيرة من الصغيرة)</string>
     <string name="hint_regist_psn_account_id">مُعرّف الحساب</string>

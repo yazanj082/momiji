@@ -88,6 +88,7 @@ class SettingsInternetPlayFragment: PreferenceFragmentCompat(), TitleFragment
 		listOf(
 			Triple(R.string.internet_play_how_title, R.string.internet_play_how, R.drawable.ic_web),
 			Triple(R.string.internet_play_console_title, R.string.internet_play_console, R.drawable.ic_console_simple),
+			Triple(R.string.internet_play_router_title, R.string.internet_play_router, R.drawable.ic_lan),
 			Triple(R.string.internet_play_privacy_title, R.string.internet_play_privacy, R.drawable.ic_lock)
 		).forEach { (title, text, icon) ->
 			aboutCategory.addPreference(Preference(context).apply {
