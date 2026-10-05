@@ -66,7 +66,10 @@ class SettingsInternetPlayFragment: PreferenceFragmentCompat(), TitleFragment
 			val preferences = Preferences(context)
 			accountCategory.addPreference(Preference(context).apply {
 				title = getString(R.string.quality_away_title)
-				summary = getString(R.string.quality_summary, getString(preferences.qualityAway.title), getString(preferences.qualityAway.summary))
+				val quality = preferences.qualityAway
+				// Its values are set in the main settings
+				summary = getString(R.string.quality_summary, getString(quality.title),
+					getString(if(quality == Preferences.Quality.CUSTOM) R.string.quality_away_custom_summary else quality.summary))
 				setIcon(R.drawable.ic_resolution)
 				setOnPreferenceClickListener { chooseQualityAway(); true }
 			})
@@ -121,12 +124,12 @@ class SettingsInternetPlayFragment: PreferenceFragmentCompat(), TitleFragment
 			Toast.makeText(context ?: return, R.string.internet_play_signed_in_toast, Toast.LENGTH_LONG).show()
 	}
 
-	/** The presets, as Custom is for the settings of every connection */
+	/** Custom, for example a low resolution for a weak mobile network, has the values set in the main settings */
 	private fun chooseQualityAway()
 	{
 		val context = context ?: return
 		val preferences = Preferences(context)
-		val choices = Preferences.Quality.values().filter { it != Preferences.Quality.CUSTOM }
+		val choices = Preferences.Quality.values().toList()
 		MaterialAlertDialogBuilder(context)
 			.setTitle(R.string.quality_away_title)
 			.setSingleChoiceItems(choices.map { getString(it.title) }.toTypedArray(), choices.indexOf(preferences.qualityAway)) { dialog, which ->

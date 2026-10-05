@@ -219,6 +219,7 @@
     <string name="quality_sharp_summary">1080p with more data, for a strong network</string>
     <string name="quality_custom">Custom</string>
     <string name="quality_custom_summary">your own resolution, frame rate and bitrate</string>
+    <string name="quality_away_custom_summary">the resolution, frame rate and bitrate set under Quality in Settings</string>
     <string name="quality_console_menu">Stream quality</string>
     <string name="quality_console_title">Stream quality of %s</string>
     <string name="quality_console_default">As in Settings (%s)</string>

@@ -136,8 +136,6 @@ class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 			true
 		}
 
-		val customPreferences = listOf(R.string.preferences_resolution_key, R.string.preferences_fps_key, R.string.preferences_bitrate_key)
-			.mapNotNull { preferenceScreen.findPreference<Preference>(getString(it)) }
 		preferenceScreen.findPreference<ListPreference>(preferences.qualityKey)?.let {
 			it.entryValues = Preferences.Quality.values().map { quality -> quality.value }.toTypedArray()
 			it.entries = Preferences.Quality.values().map { quality -> getString(quality.title) }.toTypedArray()
@@ -145,10 +143,9 @@ class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 				val quality = preferences.quality
 				getString(R.string.quality_summary, getString(quality.title), getString(quality.summary))
 			}
-			// The details are only for Custom
-			customPreferences.forEach { preference -> preference.isVisible = preferences.quality == Preferences.Quality.CUSTOM }
+			updateCustomVisible(preferences.quality)
 			it.setOnPreferenceChangeListener { _, value ->
-				customPreferences.forEach { preference -> preference.isVisible = value == Preferences.Quality.CUSTOM.value }
+				updateCustomVisible(Preferences.Quality.fromValue(value as? String) ?: preferences.quality)
 				true
 			}
 		}
@@ -262,9 +259,20 @@ class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 			.show()
 	}
 
+	/** The details of Custom, which away from home can use too */
+	private fun updateCustomVisible(quality: Preferences.Quality)
+	{
+		val custom = quality == Preferences.Quality.CUSTOM || Preferences(requireContext()).qualityAway == Preferences.Quality.CUSTOM
+		listOf(R.string.preferences_resolution_key, R.string.preferences_fps_key, R.string.preferences_bitrate_key)
+			.mapNotNull { preferenceScreen.findPreference<Preference>(getString(it)) }
+			.forEach { it.isVisible = custom }
+	}
+
 	override fun onResume()
 	{
 		super.onResume()
+		// Away from home may have switched to Custom on its own screen
+		updateCustomVisible(Preferences(requireContext()).quality)
 		// Signing in or out happens on its own screen
 		val account = PsnAccount(requireContext())
 		preferenceScreen.findPreference<Preference>("internet_play")?.summary = when

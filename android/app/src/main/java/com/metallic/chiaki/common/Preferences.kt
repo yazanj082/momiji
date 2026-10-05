@@ -224,10 +224,10 @@ class Preferences(context: Context)
 			?: if(listOf(resolutionKey, fpsKey, bitrateKey).any { sharedPreferences.contains(it) }) Quality.CUSTOM else Quality.BALANCED
 		set(value) { sharedPreferences.edit().putString(qualityKey, value.value).apply() }
 
-	/** For playing away from home, where the network is usually slower */
+	/** For playing away from home, where the network is usually slower. Custom has the same values as at home. */
 	val qualityAwayKey get() = "stream_quality_away"
 	var qualityAway: Quality
-		get() = Quality.fromValue(sharedPreferences.getString(qualityAwayKey, null))?.takeIf { it != Quality.CUSTOM } ?: qualityAwayDefault
+		get() = Quality.fromValue(sharedPreferences.getString(qualityAwayKey, null)) ?: qualityAwayDefault
 		set(value) { sharedPreferences.edit().putString(qualityAwayKey, value.value).apply() }
 
 	private fun consoleQualityKey(mac: MacAddress) = "console/${mac.value}/quality"

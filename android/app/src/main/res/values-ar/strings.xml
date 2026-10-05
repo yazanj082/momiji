@@ -206,6 +206,7 @@
     <string name="quality_sharp_summary">دقة 1080p ببيانات أكثر، لشبكة قوية</string>
     <string name="quality_custom">مخصّصة</string>
     <string name="quality_custom_summary">الدقة ومعدل الإطارات ومعدل البت التي تختارها</string>
+    <string name="quality_away_custom_summary">الدقة ومعدل الإطارات ومعدل البت المحدّدة في الإعدادات ضمن الجودة</string>
     <string name="quality_console_menu">جودة البث</string>
     <string name="quality_console_title">جودة البث على %s</string>
     <string name="quality_console_default">كما في الإعدادات (%s)</string>
