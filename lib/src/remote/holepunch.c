@@ -134,6 +134,10 @@ static CURL *holepunch_curl_easy_init(void)
 #define SECOND_US 1000000L
 #define MILLISECONDS_US 1000L
 #define WEBSOCKET_PING_INTERVAL_SEC 5
+// Sony's push server answers a PING at once, but a slow mobile link can hold the answer for seconds,
+// and closing the WebSocket loses the console's notifications for good, so only this long a silence
+// counts as a dead connection
+#define WEBSOCKET_SILENCE_TIMEOUT_SEC 20
 // Maximum WebSocket frame size currently supported by libcurl
 #define WEBSOCKET_MAX_FRAME_SIZE 64 * 1024
 #define SESSION_CREATION_TIMEOUT_SEC 30
@@ -2201,7 +2205,8 @@ static void* websocket_thread_func(void *user) {
     }
     size_t rlen;
     size_t wlen;
-    bool expecting_pong = false;
+    // When the oldest PING without an answer was sent, 0 if none
+    uint64_t unanswered_ping_since = 0;
     while (true)
     {
         chiaki_mutex_lock(&session->stop_mutex);
@@ -2213,13 +2218,13 @@ static void* websocket_thread_func(void *user) {
 
         now = chiaki_time_now_monotonic_us();
 
-        if (expecting_pong && now - last_ping_sent > 5LL * SECOND_US)
+        if (unanswered_ping_since && now - unanswered_ping_since > WEBSOCKET_SILENCE_TIMEOUT_SEC * SECOND_US)
         {
             CHIAKI_LOGE(session->log, "websocket_thread_func: Did not receive PONG in time.");
             goto cleanup_json;
         }
 
-        if (now - last_ping_sent > 5LL * SECOND_US)
+        if (now - last_ping_sent > WEBSOCKET_PING_INTERVAL_SEC * SECOND_US)
         {
             res = curl_ws_send(curl, buf, 0, &wlen, 0, CURLWS_PING);
             if (res != CURLE_OK)
@@ -2229,7 +2234,8 @@ static void* websocket_thread_func(void *user) {
             }
             CHIAKI_LOGV(session->log, "websocket_thread_func: PING.");
             last_ping_sent = now;
-            expecting_pong = true;
+            if (!unanswered_ping_since)
+                unanswered_ping_since = now;
         }
 
         memset(buf, 0, WEBSOCKET_MAX_FRAME_SIZE);
@@ -2259,11 +2265,10 @@ static void* websocket_thread_func(void *user) {
         }
 
         CHIAKI_LOGV(session->log, "websocket_thread_func: Received WebSocket frame of length %zu with flags %d", rlen, meta->flags);
+        // Any frame shows the connection is alive
+        unanswered_ping_since = 0;
         if (meta->flags & CURLWS_PONG)
-        {
             CHIAKI_LOGV(session->log, "websocket_thread_func: Received PONG.");
-            expecting_pong = false;
-        }
         if (meta->flags & CURLWS_PING)
         {
             CHIAKI_LOGV(session->log, "websocket_thread_func: Received PING.");
