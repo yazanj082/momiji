@@ -98,7 +98,8 @@ class MainActivity : AppCompatActivity()
 		binding.emptyHelpButton.setOnClickListener { ConnectionHelp.showConsoleNotFound(this) }
 
 		viewModel = ViewModelProvider(this, viewModelFactory {
-			MainViewModel(getDatabase(this), Preferences(this), PsnAccount(this), getString(R.string.display_host_main_ps4))
+			MainViewModel(getDatabase(this), Preferences(this), PsnAccount(this), getString(R.string.display_host_main_ps4),
+				getSystemService(ConnectivityManager::class.java))
 		}).get(MainViewModel::class.java)
 
 		val hostsAdapter = DisplayHostRecyclerViewAdapter(this::hostTriggered, this::wakeupHost, this::putInRestMode,

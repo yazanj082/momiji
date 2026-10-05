@@ -2,6 +2,8 @@
 
 package com.metallic.chiaki.main
 
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.SystemClock
 import android.util.Log
 import androidx.lifecycle.LiveData
@@ -11,7 +13,6 @@ import com.metallic.chiaki.common.*
 import com.metallic.chiaki.common.ext.toLiveData
 import com.metallic.chiaki.discovery.DiscoveryManager
 import com.metallic.chiaki.discovery.serverMac
-import com.metallic.chiaki.lib.DiscoveryHost
 import com.metallic.chiaki.lib.HolepunchDevice
 import com.metallic.chiaki.regist.PsnAuth
 import io.reactivex.Observable
@@ -29,7 +30,8 @@ import java.util.concurrent.TimeUnit
 /**
  * @param mainPs4Name the name for the PS4 that PSN connects to, when more than one is registered
  */
-class MainViewModel(val database: AppDatabase, val preferences: Preferences, val psnAccount: PsnAccount, private val mainPs4Name: String): ViewModel()
+class MainViewModel(val database: AppDatabase, val preferences: Preferences, val psnAccount: PsnAccount, private val mainPs4Name: String,
+	private val connectivityManager: ConnectivityManager?): ViewModel()
 {
 	companion object
 	{
@@ -38,6 +40,13 @@ class MainViewModel(val database: AppDatabase, val preferences: Preferences, val
 		private const val LOCAL_SEARCH_MS = 3000L
 		private const val PSN_REFRESH_INTERVAL_MS = 60 * 1000L
 		private const val PSN_LIST_RETRIES = 2L
+		/**
+		 * A console drops out of discovery for a few seconds when it changes state, so one seen here
+		 * that recently isn't offered through PSN, which made its card flip back and forth.
+		 */
+		private const val SEEN_HERE_MS = 60 * 1000L
+		/** Lets cards appear once a console hasn't been seen for that long */
+		private const val PSN_RECHECK_SECONDS = 10L
 		/** PSN tells only the main PS4 of an account, which it knows by this id */
 		private val MAIN_PS4_UID = ByteArray(32) { 'A'.code.toByte() }
 	}
@@ -66,12 +75,21 @@ class MainViewModel(val database: AppDatabase, val preferences: Preferences, val
 	/** PSN wants a new sign-in for playing away from home */
 	val psnSignInExpired: LiveData<Boolean> get() = _psnSignInExpired
 
+	/** When discovery last saw each console here, by name and by MAC. Only used by the combiner below. */
+	private val seenHere = mutableMapOf<String, Long>()
+
 	val displayHosts = Observables.combineLatest(
 			database.manualHostDao().getAll().toObservable(),
 			database.registeredHostDao().getAll().toObservable(),
 			discoveryManager.discoveredHosts,
-			Observables.combineLatest(psnDevices, localSearchDone) { devices, done -> if(done) devices else Optional.empty() })
+			Observables.combineLatest(psnDevices, localSearchDone, Observable.interval(0, PSN_RECHECK_SECONDS, TimeUnit.SECONDS))
+				{ devices, done, _ -> if(done) devices else Optional.empty() })
 			{ manualHosts, registeredHosts, discoveredHosts, psnDevices ->
+				val now = SystemClock.elapsedRealtime()
+				discoveredHosts.forEach { host ->
+					host.hostName?.let { seenHere[it] = now }
+					host.serverMac?.let { seenHere[macKey(it)] = now }
+				}
 				val macRegisteredHosts = registeredHosts.associateBy { it.serverMac }
 				val idRegisteredHosts = registeredHosts.associateBy { it.id }
 				discoveredHosts.map {
@@ -80,9 +98,21 @@ class MainViewModel(val database: AppDatabase, val preferences: Preferences, val
 				manualHosts.map {
 					ManualDisplayHost(it.registeredHost?.let { id -> idRegisteredHosts[id] }, it)
 				} +
-				(if(psnDevices.isPresent) psnDisplayHosts(registeredHosts, discoveredHosts, psnDevices.get()) else listOf())
+				(if(psnDevices.isPresent) psnDisplayHosts(registeredHosts, psnDevices.get(), now) else listOf())
 			}
+			// The recheck mostly finds nothing new
+			.distinctUntilChanged()
 			.toLiveData()
+
+	private fun macKey(mac: MacAddress) = "mac:${mac.value}"
+
+	/** Off Wi-Fi and Ethernet, discovery can't find consoles at home, so PSN offers them right away */
+	private fun onLocalNetwork(): Boolean
+	{
+		val manager = connectivityManager ?: return true
+		val capabilities = manager.getNetworkCapabilities(manager.activeNetwork ?: return false) ?: return false
+		return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) || capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+	}
 
 	val discoveryActive = discoveryManager.discoveryActive.toLiveData()
 
@@ -95,22 +125,22 @@ class MainViewModel(val database: AppDatabase, val preferences: Preferences, val
 	 * The PS5s of the PSN account with Remote Play on that discovery doesn't find here. Connecting
 	 * through PSN needs no registration here; one with the same name gives the console its settings.
 	 */
-	private fun psnDisplayHosts(registeredHosts: List<RegisteredHost>, discoveredHosts: List<DiscoveryHost>, devices: List<HolepunchDevice>): List<PsnDisplayHost>
+	private fun psnDisplayHosts(registeredHosts: List<RegisteredHost>, devices: List<HolepunchDevice>, now: Long): List<PsnDisplayHost>
 	{
-		val discoveredMacs = discoveredHosts.mapNotNull { it.serverMac }.toSet()
-		val discoveredNames = discoveredHosts.mapNotNull { it.hostName }.toSet()
+		val local = onLocalNetwork()
+		fun seen(key: String) = local && seenHere[key]?.let { now - it < SEEN_HERE_MS } == true
 		// Registering again adds another registration of the same console
 		val registered = registeredHosts.sortedByDescending { it.id }.distinctBy { it.serverMac }
 		val registeredPS5 = registered.filter { it.target.isPS5 }
 		val hosts = devices.filter { it.ps5 && it.remotePlayEnabled }.mapNotNull { device ->
 			val registeredHost = registeredPS5.firstOrNull { it.serverNickname == device.asciiName || it.serverNickname == device.name }
-			if(device.asciiName in discoveredNames || (registeredHost != null && registeredHost.serverMac in discoveredMacs))
+			if(seen(device.asciiName) || (registeredHost != null && seen(macKey(registeredHost.serverMac))))
 				return@mapNotNull null
 			PsnDisplayHost(registeredHost, device.name, device.uid, true)
 		}
 		val registeredPS4 = registered.filter { !it.target.isPS5 }
 		val ps4 = registeredPS4.firstOrNull()
-			?.takeIf { registeredPS4.none { it.serverMac in discoveredMacs } }
+			?.takeIf { registeredPS4.none { seen(macKey(it.serverMac)) } }
 			?.let { PsnDisplayHost(it, (if(registeredPS4.size == 1) it.serverNickname else null) ?: mainPs4Name, MAIN_PS4_UID, false) }
 		return hosts + listOfNotNull(ps4)
 	}
