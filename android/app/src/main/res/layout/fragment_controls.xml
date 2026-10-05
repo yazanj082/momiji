@@ -10,6 +10,7 @@
     tools:ignore="RtlHardcoded,RtlSymmetry">
 
     <com.metallic.chiaki.touchcontrols.ControlsBackgroundView
+        android:id="@+id/controlsBackgroundView"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 

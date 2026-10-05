@@ -37,6 +37,9 @@ abstract class TouchControlsFragment : Fragment()
 		controllerStateProxy.flatMap { it }
 
 	var onScreenControlsEnabled: LiveData<Boolean>? = null
+
+	/** A double tap beside the controls */
+	var onBackgroundDoubleTap: (() -> Unit)? = null
 }
 
 class DefaultTouchControlsFragment : TouchControlsFragment()
@@ -56,6 +59,7 @@ class DefaultTouchControlsFragment : TouchControlsFragment()
 	override fun onViewCreated(view: View, savedInstanceState: Bundle?)
 	{
 		super.onViewCreated(view, savedInstanceState)
+		binding.controlsBackgroundView.onDoubleTap = { onBackgroundDoubleTap?.invoke() }
 		binding.dpadView.stateChangeCallback = this::dpadStateChanged
 		binding.crossButtonView.buttonPressedCallback = buttonStateChanged(ControllerState.BUTTON_CROSS)
 		binding.moonButtonView.buttonPressedCallback = buttonStateChanged(ControllerState.BUTTON_MOON)

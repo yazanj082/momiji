@@ -163,6 +163,19 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		}
 
 		viewModel.session.state.observe(this, Observer { this.stateChanged(it) })
+		// With a controller, the screen isn't played on, so a tap on the stream shows or hides the
+		// overlay. It only gets taps that no control or touchpad took.
+		val overlayTapDetector = GestureDetector(this, object: GestureDetector.SimpleOnGestureListener()
+		{
+			override fun onDown(e: MotionEvent) = true
+
+			override fun onSingleTapUp(e: MotionEvent): Boolean
+			{
+				toggleOverlay()
+				return true
+			}
+		})
+		binding.root.setOnTouchListener { _, event -> overlayTapDetector.onTouchEvent(event) }
 		// The small window grows out of the picture where it is
 		binding.root.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updatePictureInPictureParams() }
 		viewModel.session.cantDisplay.observe(this, Observer {
@@ -291,6 +304,8 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		super.onAttachFragment(fragment)
 		if(fragment is TouchControlsFragment)
 		{
+			// While the controls are played on, a single tap beside them is usually a missed button
+			fragment.onBackgroundDoubleTap = { showOverlay() }
 			fragment.controllerState
 				.subscribe { 
 					lastFragmentControllerState = it
@@ -301,20 +316,29 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		}
 	}
 
-	override fun onResume()
+	/**
+	 * The stream runs while the activity can be seen: picture-in-picture and split screen pause the
+	 * activity, but don't stop it. Android pauses it already while it moves into the small window.
+	 */
+	override fun onStart()
 	{
-		super.onResume()
-		hideSystemUI()
+		super.onStart()
 		if (videoRenderer != null) {
 			binding.debandSurfaceView.onResume()
 		}
-		(getSystemService(INPUT_SERVICE) as InputManager).registerInputDeviceListener(inputDeviceListener, null)
-		viewModel.input.menuComboCallback = { showStreamMenu() }
 		acquireWifiLock()
 		viewModel.session.resume()
 		if(Preferences(this).streamStatsEnabled)
 			setStatsVisible(true)
 		statsHandler.post(checkBatteryRunnable)
+	}
+
+	override fun onResume()
+	{
+		super.onResume()
+		hideSystemUI()
+		(getSystemService(INPUT_SERVICE) as InputManager).registerInputDeviceListener(inputDeviceListener, null)
+		viewModel.input.menuComboCallback = { showStreamMenu() }
 	}
 
 	private var wifiLock: WifiManager.WifiLock? = null
@@ -339,20 +363,25 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 	override fun onPause()
 	{
 		super.onPause()
-		// The stream goes on in the small window
-		if(isInPictureInPictureMode)
-			return
+		viewModel.input.menuComboCallback = null
+		(getSystemService(INPUT_SERVICE) as InputManager).unregisterInputDeviceListener(inputDeviceListener)
+	}
+
+	override fun onStop()
+	{
+		super.onStop()
 		if (videoRenderer != null) {
 			binding.debandSurfaceView.onPause()
 		}
-		viewModel.input.menuComboCallback = null
 		wifiLock?.release()
 		wifiLock = null
-		(getSystemService(INPUT_SERVICE) as InputManager).unregisterInputDeviceListener(inputDeviceListener)
 		rumble?.stop()
 		statsHandler.removeCallbacks(updateStatsRunnable)
 		statsHandler.removeCallbacks(checkBatteryRunnable)
 		viewModel.session.pause()
+		// Leaving the app ends the stream, as it always has. So does closing the small window.
+		if(!isChangingConfigurations)
+			finish()
 	}
 
 	/** Picture-in-picture, where the device has it. In desktop modes the stream is a window already. */
@@ -535,6 +564,17 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		scheduleHideOverlay()
 	}
 
+	private fun toggleOverlay()
+	{
+		if(binding.overlay.isVisible && binding.overlay.alpha > 0.5f)
+		{
+			uiVisibilityHandler.removeCallbacks(hideSystemUIRunnable)
+			hideSystemUIRunnable.run()
+		}
+		else
+			showOverlay()
+	}
+
 	private fun scheduleHideOverlay()
 	{
 		uiVisibilityHandler.removeCallbacks(hideSystemUIRunnable)
@@ -660,7 +700,8 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 			?: ControllerProfiles.connectedControllers().firstOrNull()
 			?: return null
 		val battery = device.batteryState
-		if(!battery.isPresent || battery.capacity.isNaN())
+		// Android reports -1 % when it doesn't know the charge, such as for some controllers on a cable
+		if(!battery.isPresent || battery.capacity.isNaN() || battery.capacity !in 0f..1f)
 			return null
 		val charging = battery.status == android.hardware.BatteryState.STATUS_CHARGING
 			|| battery.status == android.hardware.BatteryState.STATUS_FULL
