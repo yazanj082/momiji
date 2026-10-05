@@ -68,6 +68,68 @@
 #include "../utils.h"
 #include "stun.h"
 
+#ifdef __ANDROID__
+/**
+ * Sony's push notification servers (*-pushcl.np.communication.playstation.net) send only their own
+ * certificate, without the intermediate that links it to a root. Browsers fetch that one, curl
+ * doesn't, so the WebSocket failed with "SSL peer certificate ... was not OK". It's trusted here
+ * besides the system's roots: COMODO RSA Domain Validation Secure Server CA, which COMODO RSA
+ * Certification Authority signed, valid until 2029-02-11,
+ * SHA-256 02:AB:57:E4:E6:7A:0C:B4:8D:D2:FF:34:83:0E:8A:C4:0F:44:76:FB:08:CA:6B:E3:F5:CD:84:6F:64:68:40:F0.
+ */
+static const char psn_intermediate_ca_pem[] =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIGCDCCA/CgAwIBAgIQKy5u6tl1NmwUim7bo3yMBzANBgkqhkiG9w0BAQwFADCB\n"
+    "hTELMAkGA1UEBhMCR0IxGzAZBgNVBAgTEkdyZWF0ZXIgTWFuY2hlc3RlcjEQMA4G\n"
+    "A1UEBxMHU2FsZm9yZDEaMBgGA1UEChMRQ09NT0RPIENBIExpbWl0ZWQxKzApBgNV\n"
+    "BAMTIkNPTU9ETyBSU0EgQ2VydGlmaWNhdGlvbiBBdXRob3JpdHkwHhcNMTQwMjEy\n"
+    "MDAwMDAwWhcNMjkwMjExMjM1OTU5WjCBkDELMAkGA1UEBhMCR0IxGzAZBgNVBAgT\n"
+    "EkdyZWF0ZXIgTWFuY2hlc3RlcjEQMA4GA1UEBxMHU2FsZm9yZDEaMBgGA1UEChMR\n"
+    "Q09NT0RPIENBIExpbWl0ZWQxNjA0BgNVBAMTLUNPTU9ETyBSU0EgRG9tYWluIFZh\n"
+    "bGlkYXRpb24gU2VjdXJlIFNlcnZlciBDQTCCASIwDQYJKoZIhvcNAQEBBQADggEP\n"
+    "ADCCAQoCggEBAI7CAhnhoFmk6zg1jSz9AdDTScBkxwtiBUUWOqigwAwCfx3M28Sh\n"
+    "bXcDow+G+eMGnD4LgYqbSRutA776S9uMIO3Vzl5ljj4Nr0zCsLdFXlIvNN5IJGS0\n"
+    "Qa4Al/e+Z96e0HqnU4A7fK31llVvl0cKfIWLIpeNs4TgllfQcBhglo/uLQeTnaG6\n"
+    "ytHNe+nEKpooIZFNb5JPJaXyejXdJtxGpdCsWTWM/06RQ1A/WZMebFEh7lgUq/51\n"
+    "UHg+TLAchhP6a5i84DuUHoVS3AOTJBhuyydRReZw3iVDpA3hSqXttn7IzW3uLh0n\n"
+    "c13cRTCAquOyQQuvvUSH2rnlG51/ruWFgqUCAwEAAaOCAWUwggFhMB8GA1UdIwQY\n"
+    "MBaAFLuvfgI9+qbxPISOre44mOzZMjLUMB0GA1UdDgQWBBSQr2o6lFoL2JDqElZz\n"
+    "30O0Oija5zAOBgNVHQ8BAf8EBAMCAYYwEgYDVR0TAQH/BAgwBgEB/wIBADAdBgNV\n"
+    "HSUEFjAUBggrBgEFBQcDAQYIKwYBBQUHAwIwGwYDVR0gBBQwEjAGBgRVHSAAMAgG\n"
+    "BmeBDAECATBMBgNVHR8ERTBDMEGgP6A9hjtodHRwOi8vY3JsLmNvbW9kb2NhLmNv\n"
+    "bS9DT01PRE9SU0FDZXJ0aWZpY2F0aW9uQXV0aG9yaXR5LmNybDBxBggrBgEFBQcB\n"
+    "AQRlMGMwOwYIKwYBBQUHMAKGL2h0dHA6Ly9jcnQuY29tb2RvY2EuY29tL0NPTU9E\n"
+    "T1JTQUFkZFRydXN0Q0EuY3J0MCQGCCsGAQUFBzABhhhodHRwOi8vb2NzcC5jb21v\n"
+    "ZG9jYS5jb20wDQYJKoZIhvcNAQEMBQADggIBAE4rdk+SHGI2ibp3wScF9BzWRJ2p\n"
+    "mj6q1WZmAT7qSeaiNbz69t2Vjpk1mA42GHWx3d1Qcnyu3HeIzg/3kCDKo2cuH1Z/\n"
+    "e+FE6kKVxF0NAVBGFfKBiVlsit2M8RKhjTpCipj4SzR7JzsItG8kO3KdY3RYPBps\n"
+    "P0/HEZrIqPW1N+8QRcZs2eBelSaz662jue5/DJpmNXMyYE7l3YphLG5SEXdoltMY\n"
+    "dVEVABt0iN3hxzgEQyjpFv3ZBdRdRydg1vs4O2xyopT4Qhrf7W8GjEXCBgCq5Ojc\n"
+    "2bXhc3js9iPc0d1sjhqPpepUfJa3w/5Vjo1JXvxku88+vZbrac2/4EjxYoIQ5QxG\n"
+    "V/Iz2tDIY+3GH5QFlkoakdH368+PUq4NCNk+qKBR6cGHdNXJ93SrLlP7u3r7l+L4\n"
+    "HyaPs9Kg4DdbKDsx5Q5XLVq4rXmsXiBmGqW5prU5wfWYQ//u+aen/e7KJD2AFsQX\n"
+    "j4rBYKEMrltDR5FL1ZoXX/nUh8HCjLfn4g8wGTeGrODcQgPmlKidrv0PJFGUzpII\n"
+    "0fxQ8ANAe4hZ7Q7drNJ3gjTcBpUC2JD5Leo31Rpg0Gcg19hCC0Wvgmje3WYkN5Ap\n"
+    "lBlGGSW4gNfL1IYoakRwJiNiqZ+Gb7+6kHDSVneFeO/qJakXzlByjAA6quPbYzSf\n"
+    "+AZxAeKCINT+b72x\n"
+    "-----END CERTIFICATE-----\n";
+#endif
+
+/** curl_easy_init(), with the certificates the PSN servers need */
+static CURL *holepunch_curl_easy_init(void)
+{
+    CURL *curl = curl_easy_init();
+#ifdef __ANDROID__
+    if(curl)
+    {
+        // Added to the system's roots in CURL_CA_PATH, which mbedtls also loads
+        struct curl_blob blob = { (void *)psn_intermediate_ca_pem, sizeof(psn_intermediate_ca_pem) - 1, CURL_BLOB_NOCOPY };
+        curl_easy_setopt(curl, CURLOPT_CAINFO_BLOB, &blob);
+    }
+#endif
+    return curl;
+}
+
 #define UUIDV4_STR_LEN 37
 #define SECOND_US 1000000L
 #define MILLISECONDS_US 1000L
@@ -443,7 +505,7 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_holepunch_list_devices(
     ChiakiHolepunchDeviceInfo **devices, size_t *device_count,
     ChiakiLog *log)
 {
-    CURL *curl = curl_easy_init();
+    CURL *curl = holepunch_curl_easy_init();
     if(!curl)
     {
         CHIAKI_LOGE(log, "Curl could not init");
@@ -1219,7 +1281,7 @@ static ChiakiErrorCode http_ps4_session_wakeup(Session *session)
         .size = 0,
     };
 
-    CURL *curl = curl_easy_init();
+    CURL *curl = holepunch_curl_easy_init();
     if(!curl)
     {
         CHIAKI_LOGE(session->log, "Curl could not init");
@@ -1362,7 +1424,7 @@ static ChiakiErrorCode http_ps4_session_wakeup(Session *session)
         data2_base64,
         session->session_id);
 
-    curl = curl_easy_init();
+    curl = holepunch_curl_easy_init();
     if(!curl)
     {
         CHIAKI_LOGE(session->log, "Curl could not init");
@@ -1874,7 +1936,7 @@ static ChiakiErrorCode get_websocket_fqdn(Session *session, char **fqdn)
         .size = 0,
     };
 
-    CURL *curl = curl_easy_init();
+    CURL *curl = holepunch_curl_easy_init();
     if(!curl)
     {
         CHIAKI_LOGE(session->log, "Curl could not init");
@@ -2047,7 +2109,7 @@ static void* websocket_thread_func(void *user) {
     char ws_url[128] = {0};
     snprintf(ws_url, sizeof(ws_url), "wss://%s/np/pushNotification", session->ws_fqdn);
 
-    CURL* curl = curl_easy_init();
+    CURL* curl = holepunch_curl_easy_init();
     if(!curl)
     {
         CHIAKI_LOGE(session->log, "Curl could not init");
@@ -2834,7 +2896,7 @@ static ChiakiErrorCode http_create_session(Session *session)
         .size = 0,
     };
 
-    CURL* curl = curl_easy_init();
+    CURL* curl = holepunch_curl_easy_init();
     if(!curl)
     {
         free(response_data.data);
@@ -2960,7 +3022,7 @@ static ChiakiErrorCode http_check_session(Session *session, bool viewurl)
         .size = 0,
     };
 
-    CURL* curl = curl_easy_init();
+    CURL* curl = holepunch_curl_easy_init();
     if(!curl)
     {
         free(response_data.data);
@@ -3079,7 +3141,7 @@ static ChiakiErrorCode http_start_session(Session *session)
         .size = 0,
     };
 
-    CURL *curl = curl_easy_init();
+    CURL *curl = holepunch_curl_easy_init();
     if(!curl)
     {
         free(response_data.data);
@@ -3200,7 +3262,7 @@ static ChiakiErrorCode http_send_session_message(Session *session, SessionMessag
         session->console_type == CHIAKI_HOLEPUNCH_CONSOLE_TYPE_PS4 ? "PS4" : "PS5"
     );
     CHIAKI_LOGV(session->log, "Message to send: %s", msg_buf);
-    CURL *curl = curl_easy_init();
+    CURL *curl = holepunch_curl_easy_init();
     if(!curl)
     {
         free(payload_str);
@@ -3281,7 +3343,7 @@ static ChiakiErrorCode deleteSession(Session *session)
     char url[128] = {0};
     snprintf(url, sizeof(url), delete_messsage_url_fmt, session->session_id);
 
-    CURL *curl = curl_easy_init();
+    CURL *curl = holepunch_curl_easy_init();
     if(!curl)
     {
         free(response_data.data);
@@ -5360,7 +5422,7 @@ static ChiakiErrorCode get_stun_servers(Session *session)
 {
     ChiakiErrorCode err = CHIAKI_ERR_SUCCESS;
     const char STUN_HOSTS_URL[] = "https://raw.githubusercontent.com/pradt2/always-online-stun/master/valid_hosts.txt";
-    CURL *curl = curl_easy_init();
+    CURL *curl = holepunch_curl_easy_init();
     if(!curl)
     {
         CHIAKI_LOGE(session->log, "Curl could not init");
@@ -5448,7 +5510,7 @@ static ChiakiErrorCode get_stun_servers(Session *session)
     curl_easy_cleanup(curl);
     curl = NULL;
     const char STUN_HOSTS_URL_IPV6[] = "https://raw.githubusercontent.com/pradt2/always-online-stun/master/valid_ipv6s.txt";
-    curl = curl_easy_init();
+    curl = holepunch_curl_easy_init();
     if(!curl)
     {
         CHIAKI_LOGE(session->log, "Curl could not init");
