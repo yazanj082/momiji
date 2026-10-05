@@ -51,7 +51,8 @@ enum class PsnConnectError
 
 class StreamSession(val connectInfo: ConnectInfo, val logManager: LogManager, val logVerbose: Boolean, val input: StreamInput)
 {
-	var session: Session? = null
+	// Also read on the thread of a controller's motion sensors
+	@Volatile var session: Session? = null
 		private set
 
 	fun stats() = session?.getStats()

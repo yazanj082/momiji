@@ -160,10 +160,10 @@ class StreamInput(val context: Context, val preferences: Preferences)
 					for(i in 0 until 3)
 						controllerAccel[i] = event.values[i] / SensorManager.GRAVITY_EARTH
 				// The gyroscope drives the updates, with the latest acceleration
-				Sensor.TYPE_GYROSCOPE -> {
+				Sensor.TYPE_GYROSCOPE -> synchronized(sendLock) {
 					controllerMotionCallback?.invoke(event.values[0], event.values[1], event.values[2],
 						controllerAccel[0], controllerAccel[1], controllerAccel[2], (event.timestamp / 1000).toInt())
-					controllerStateUpdated()
+					sendControllerState()
 				}
 			}
 		}
@@ -256,14 +256,27 @@ class StreamInput(val context: Context, val preferences: Preferences)
 	var menuComboCallback: (() -> Unit)? = null
 	private var menuComboActive = false
 
+	/** Called on the main thread */
 	private fun controllerStateUpdated()
 	{
-		val state = controllerState
+		val state = sendControllerState()
 		val comboHeld = state.buttons and MENU_COMBO == MENU_COMBO
-		if(comboHeld && !menuComboActive)
-			menuComboCallback?.invoke()
+		val comboPressed = comboHeld && !menuComboActive
 		menuComboActive = comboHeld
-		controllerStateChangedCallback?.let { it(state) }
+		// After sending, so the released buttons of the menu are the last state the console gets
+		if(comboPressed)
+			menuComboCallback?.invoke()
+	}
+
+	/**
+	 * A controller's motion sensors report on a thread of their own, so the states are put
+	 * together and sent one at a time: an older state arriving after a newer one would make
+	 * the console see a button released and pressed again.
+	 */
+	private val sendLock = Any()
+
+	private fun sendControllerState(): ControllerState = synchronized(sendLock) {
+		controllerState.also { state -> controllerStateChangedCallback?.invoke(state) }
 	}
 
 	/**

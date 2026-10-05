@@ -500,6 +500,12 @@ class Session(connectInfo: ConnectInfo, logFile: String?, logVerbose: Boolean,
 		fun sessionEvent(event: Event)
 	}
 
+	/**
+	 * Calls come from several threads (a controller's motion sensors report on their own),
+	 * so they hold this lock, and freeing the session waits for the ones already running.
+	 */
+	private val lock = Any()
+	/** Guarded by lock, 0 once freed */
 	private var nativePtr: Long
 	var eventCallback: ((event: Event) -> Unit)? = null
 
@@ -514,16 +520,22 @@ class Session(connectInfo: ConnectInfo, logFile: String?, logVerbose: Boolean,
 		nativePtr = result.ptr
 	}
 
-	fun start() = ErrorCode(ChiakiNative.sessionStart(nativePtr))
-	fun stop() = ErrorCode(ChiakiNative.sessionStop(nativePtr))
+	/** Runs block with the native session, or returns null once it was freed */
+	private inline fun <T> withNative(block: (ptr: Long) -> T): T? = synchronized(lock) {
+		nativePtr.takeIf { it != 0L }?.let(block)
+	}
+
+	fun start() = ErrorCode(withNative { ChiakiNative.sessionStart(it) } ?: ErrorCode.CANCELED)
+	fun stop() = ErrorCode(withNative { ChiakiNative.sessionStop(it) } ?: ErrorCode.CANCELED)
 
 	fun dispose()
 	{
-		if(nativePtr == 0L)
+		// Calls that already started finish first, later ones do nothing
+		val ptr = synchronized(lock) { nativePtr.also { nativePtr = 0L } }
+		if(ptr == 0L)
 			return
-		ChiakiNative.sessionJoin(nativePtr)
-		ChiakiNative.sessionFree(nativePtr)
-		nativePtr = 0L
+		ChiakiNative.sessionJoin(ptr)
+		ChiakiNative.sessionFree(ptr)
 	}
 
 	private fun event(event: Event)
@@ -583,28 +595,26 @@ class Session(connectInfo: ConnectInfo, logFile: String?, logVerbose: Boolean,
 
 	fun setSurface(surface: Surface?)
 	{
-		ChiakiNative.sessionSetSurface(nativePtr, surface)
+		withNative { ChiakiNative.sessionSetSurface(it, surface) }
 	}
 
 	fun setControllerState(controllerState: ControllerState)
 	{
-		ChiakiNative.sessionSetControllerState(nativePtr, controllerState)
+		withNative { ChiakiNative.sessionSetControllerState(it, controllerState) }
 	}
 
 	fun setLoginPin(pin: String)
 	{
-		ChiakiNative.sessionSetLoginPin(nativePtr, pin)
+		withNative { ChiakiNative.sessionSetLoginPin(it, pin) }
 	}
 
 	/** Puts the console in rest mode, once connected */
-	fun gotoBed() = ErrorCode(ChiakiNative.sessionGotoBed(nativePtr))
+	fun gotoBed() = ErrorCode(withNative { ChiakiNative.sessionGotoBed(it) } ?: ErrorCode.CANCELED)
 
 	fun getStats(): StreamStats?
 	{
-		if(nativePtr == 0L)
-			return null
 		val stats = FloatArray(6)
-		ChiakiNative.sessionGetStats(nativePtr, stats)
+		withNative { ChiakiNative.sessionGetStats(it, stats) } ?: return null
 		return StreamStats(stats[0], stats[1], stats[2], stats[3].toLong(), stats[4], stats[5])
 	}
 
@@ -614,7 +624,7 @@ class Session(connectInfo: ConnectInfo, logFile: String?, logVerbose: Boolean,
 	 */
 	fun setMotion(gyroX: Float, gyroY: Float, gyroZ: Float, accelX: Float, accelY: Float, accelZ: Float, timestampUs: Int)
 	{
-		ChiakiNative.sessionSetMotion(nativePtr, gyroX, gyroY, gyroZ, accelX, accelY, accelZ, timestampUs)
+		withNative { ChiakiNative.sessionSetMotion(it, gyroX, gyroY, gyroZ, accelX, accelY, accelZ, timestampUs) }
 	}
 
 	/**
@@ -622,7 +632,7 @@ class Session(connectInfo: ConnectInfo, logFile: String?, logVerbose: Boolean,
 	 */
 	fun setAudioDevice(deviceId: Int)
 	{
-		ChiakiNative.sessionSetAudioDevice(nativePtr, deviceId)
+		withNative { ChiakiNative.sessionSetAudioDevice(it, deviceId) }
 	}
 
 	/**
@@ -630,7 +640,7 @@ class Session(connectInfo: ConnectInfo, logFile: String?, logVerbose: Boolean,
 	 */
 	fun setHapticsDevice(deviceId: Int)
 	{
-		ChiakiNative.sessionSetHapticsDevice(nativePtr, deviceId)
+		withNative { ChiakiNative.sessionSetHapticsDevice(it, deviceId) }
 	}
 }
 
