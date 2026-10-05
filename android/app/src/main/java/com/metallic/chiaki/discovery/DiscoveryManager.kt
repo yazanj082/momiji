@@ -86,6 +86,21 @@ class DiscoveryManager
 		updateService()
 	}
 
+	/**
+	 * Drops the consoles found so far right away, for when the network changed and they may not be
+	 * reachable anymore. The service starts over too, so its own list starts empty.
+	 */
+	fun forgetHosts()
+	{
+		val running = discoveryService != null
+		discoveryService?.dispose()
+		discoveryService = null
+		discoveredHostsSubjectRaw.onNext(listOf())
+		discoveredHostsSubjectDebounced.onNext(listOf())
+		if(running)
+			updateService()
+	}
+
 	fun dispose()
 	{
 		active = false

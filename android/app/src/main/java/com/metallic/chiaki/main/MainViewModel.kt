@@ -3,7 +3,10 @@
 package com.metallic.chiaki.main
 
 import android.net.ConnectivityManager
+import android.net.Network
 import android.net.NetworkCapabilities
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import androidx.lifecycle.LiveData
@@ -25,6 +28,7 @@ import io.reactivex.rxkotlin.addTo
 import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.BehaviorSubject
 import java.util.Optional
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 /**
@@ -63,9 +67,16 @@ class MainViewModel(val database: AppDatabase, val preferences: Preferences, val
 
 	/** The consoles of the PSN account, empty if not signed in or listing them failed */
 	private val psnDevices = BehaviorSubject.createDefault(Optional.empty<List<HolepunchDevice>>())
-	private val localSearchDone = BehaviorSubject.createDefault(false).also { subject ->
-		Observable.timer(LOCAL_SEARCH_MS, TimeUnit.MILLISECONDS)
-			.subscribe { subject.onNext(true) }
+	private val localSearchDone = BehaviorSubject.createDefault(false)
+	private var localSearch: Disposable? = null
+
+	/** Gives discovery its time to find consoles here, before PSN offers the others */
+	private fun startLocalSearch()
+	{
+		localSearch?.dispose()
+		localSearchDone.onNext(false)
+		localSearch = Observable.timer(LOCAL_SEARCH_MS, TimeUnit.MILLISECONDS)
+			.subscribe { localSearchDone.onNext(true) }
 			.addTo(disposable)
 	}
 	private var psnRefresh: Disposable? = null
@@ -75,8 +86,50 @@ class MainViewModel(val database: AppDatabase, val preferences: Preferences, val
 	/** PSN wants a new sign-in for playing away from home */
 	val psnSignInExpired: LiveData<Boolean> get() = _psnSignInExpired
 
-	/** When discovery last saw each console here, by name and by MAC. Only used by the combiner below. */
-	private val seenHere = mutableMapOf<String, Long>()
+	/** When discovery last saw each console here, by name and by MAC. Cleared when the network changes. */
+	private val seenHere = ConcurrentHashMap<String, Long>()
+
+	/** The network that discovery and seenHere found their consoles on */
+	private var hostsNetwork: Network? = null
+	private val mainHandler = Handler(Looper.getMainLooper())
+	private val networkCallback = object: ConnectivityManager.NetworkCallback()
+	{
+		override fun onAvailable(network: Network)
+		{
+			mainHandler.post { networkChanged(network) }
+		}
+	}
+
+	init
+	{
+		startLocalSearch()
+		try
+		{
+			connectivityManager?.registerDefaultNetworkCallback(networkCallback)
+		}
+		catch(e: RuntimeException)
+		{
+			Log.w(TAG, "Can't follow network changes", e)
+		}
+	}
+
+	/** Also for changes while the app was in the background, where the callback may come late */
+	fun checkNetwork() = networkChanged(connectivityManager?.activeNetwork)
+
+	/**
+	 * Consoles found on another network, such as at home before leaving with the app in the background,
+	 * aren't reachable from this one. They were still listed, and seen so recently that PSN didn't offer
+	 * them for a minute. So they're dropped right away, and PSN offers them after a new local search.
+	 */
+	private fun networkChanged(network: Network?)
+	{
+		if(network == hostsNetwork)
+			return
+		hostsNetwork = network
+		seenHere.clear()
+		discoveryManager.forgetHosts()
+		startLocalSearch()
+	}
 
 	val displayHosts = Observables.combineLatest(
 			database.manualHostDao().getAll().toObservable(),
@@ -211,6 +264,12 @@ class MainViewModel(val database: AppDatabase, val preferences: Preferences, val
 	override fun onCleared()
 	{
 		super.onCleared()
+		try
+		{
+			connectivityManager?.unregisterNetworkCallback(networkCallback)
+		}
+		catch(e: RuntimeException) {}
+		mainHandler.removeCallbacksAndMessages(null)
 		disposable.dispose()
 		discoveryManager.dispose()
 	}

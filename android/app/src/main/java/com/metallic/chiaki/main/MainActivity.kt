@@ -238,6 +238,7 @@ class MainActivity : AppCompatActivity()
 	override fun onStart()
 	{
 		super.onStart()
+		viewModel.checkNetwork()
 		viewModel.discoveryManager.resume()
 		// Also after signing in or out
 		viewModel.refreshPsnConsoles()
