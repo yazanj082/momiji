@@ -4,7 +4,9 @@ package com.metallic.chiaki.stream
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
+import android.app.ActivityManager
 import android.app.PictureInPictureParams
+import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
@@ -37,6 +39,7 @@ import com.metallic.chiaki.common.ext.viewModelFactory
 import com.metallic.chiaki.databinding.ActivityStreamBinding
 import com.metallic.chiaki.lib.ConnectInfo
 import com.metallic.chiaki.lib.ConnectVideoProfile
+import com.metallic.chiaki.main.MainActivity
 import com.metallic.chiaki.session.*
 import com.metallic.chiaki.touchcontrols.DefaultTouchControlsFragment
 import com.metallic.chiaki.touchcontrols.TouchControlsFragment
@@ -385,6 +388,36 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		// Leaving the app ends the stream, as it always has. So does closing the small window.
 		if(!isChangingConfigurations)
 			finish()
+	}
+
+	/**
+	 * The stream has a task of its own, and after picture-in-picture or switching apps, the task behind
+	 * it can be another app's. Quitting the stream on screen (Back, the menu, a dialog) goes back to the
+	 * consoles, while closing the small window or leaving the app doesn't bring Momiji up.
+	 */
+	override fun finish()
+	{
+		if(isTaskRoot && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) && !isInPictureInPictureMode)
+			showConsoles()
+		super.finish()
+	}
+
+	private fun showConsoles()
+	{
+		val mainTask = getSystemService(ActivityManager::class.java).appTasks.firstOrNull {
+			try
+			{
+				it.taskInfo.baseActivity?.className != StreamActivity::class.java.name
+			}
+			catch(e: IllegalArgumentException) // The task ended meanwhile
+			{
+				false
+			}
+		}
+		if(mainTask != null)
+			mainTask.moveToFront()
+		else
+			startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 	}
 
 	/** Picture-in-picture, where the device has it. In desktop modes the stream is a window already. */
