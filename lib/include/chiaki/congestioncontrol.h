@@ -19,6 +19,12 @@ typedef struct chiaki_congestion_control_t
 	ChiakiBoolPredCond stop_cond;
 	double packet_loss;
 	double packet_loss_max;
+	/**
+	 * Packets received and lost since the start, as measured (before packet_loss_max), for statistics
+	 * over any period. Read them with __atomic_load_n.
+	 */
+	uint64_t received_total;
+	uint64_t lost_total;
 } ChiakiCongestionControl;
 
 CHIAKI_EXPORT ChiakiErrorCode chiaki_congestion_control_start(ChiakiCongestionControl *control, ChiakiTakion *takion, ChiakiPacketStats *stats, double packet_loss_max);

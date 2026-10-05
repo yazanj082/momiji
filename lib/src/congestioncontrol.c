@@ -12,6 +12,8 @@ static void *congestion_control_thread_func(void *user)
 	if(err != CHIAKI_ERR_SUCCESS)
 		return NULL;
 
+	// The first interval can count a jump of the audio sequence numbers to their start as lost
+	bool first = true;
 	while(true)
 	{
 		err = chiaki_bool_pred_cond_timedwait(&control->stop_cond, CONGESTION_CONTROL_INTERVAL_MS);
@@ -24,6 +26,12 @@ static void *congestion_control_thread_func(void *user)
 		ChiakiTakionCongestionPacket packet = { 0 };
 		uint64_t total = received + lost;
 		control->packet_loss = total > 0 ? (double)lost / total : 0;
+		if(!first)
+		{
+			__atomic_add_fetch(&control->received_total, received, __ATOMIC_RELAXED);
+			__atomic_add_fetch(&control->lost_total, lost, __ATOMIC_RELAXED);
+		}
+		first = false;
 		if(control->packet_loss > control->packet_loss_max)
 		{
 			CHIAKI_LOGW(control->takion->log, "Increasing received packets to reduce hit on stream quality");
@@ -47,6 +55,8 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_congestion_control_start(ChiakiCongestionCo
 	control->stats = stats;
 	control->packet_loss_max = packet_loss_max;
 	control->packet_loss = 0;
+	control->received_total = 0;
+	control->lost_total = 0;
 
 	ChiakiErrorCode err = chiaki_bool_pred_cond_init(&control->stop_cond);
 	if(err != CHIAKI_ERR_SUCCESS)

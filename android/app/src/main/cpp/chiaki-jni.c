@@ -183,6 +183,9 @@ typedef struct android_chiaki_session_t
 	uint8_t haptics_sent_left, haptics_sent_right;
 	uint64_t haptics_sent_us;
 	bool haptics_logged, rumble_logged;
+
+	// Packet counts at the last sessionGetStats(), for the loss since then
+	uint64_t stats_received, stats_lost;
 } AndroidChiakiSession;
 
 /**
@@ -727,9 +730,20 @@ JNIEXPORT void JNICALL JNI_FCN(sessionGetStats)(JNIEnv *env, jobject obj, jlong 
 {
 	AndroidChiakiSession *session = (AndroidChiakiSession *)ptr;
 	AndroidChiakiVideoDecoder *decoder = &session->video_decoder;
+	// The loss since the last call: the congestion control's own figure covers only its last 200 ms,
+	// so looking at it once a second missed most losses, as they come in bursts
+	ChiakiCongestionControl *congestion = &session->session.stream_connection.congestion_control;
+	uint64_t received = __atomic_load_n(&congestion->received_total, __ATOMIC_RELAXED);
+	uint64_t lost = __atomic_load_n(&congestion->lost_total, __ATOMIC_RELAXED);
+	if(received < session->stats_received || lost < session->stats_lost)
+		session->stats_received = session->stats_lost = 0;
+	uint64_t received_new = received - session->stats_received;
+	uint64_t lost_new = lost - session->stats_lost;
+	session->stats_received = received;
+	session->stats_lost = lost;
 	jfloat stats[6] = {
 		(jfloat)session->session.stream_connection.measured_bitrate,
-		(jfloat)session->session.stream_connection.congestion_control.packet_loss,
+		received_new + lost_new > 0 ? (jfloat)lost_new / (jfloat)(received_new + lost_new) : 0.0f,
 		(jfloat)(session->session.rtt_us / 1000.0),
 		(jfloat)__atomic_load_n(&decoder->frames_rendered, __ATOMIC_RELAXED),
 		(jfloat)(__atomic_load_n(&decoder->stats_latency_avg_us, __ATOMIC_RELAXED) / 1000.0),
