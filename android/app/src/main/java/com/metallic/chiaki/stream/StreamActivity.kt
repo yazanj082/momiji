@@ -12,6 +12,7 @@ import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Rect
 import android.graphics.Matrix
+import android.hardware.display.DisplayManager
 import android.hardware.input.InputManager
 import android.net.wifi.WifiManager
 import android.os.*
@@ -300,7 +301,55 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 	private var lastStreamTouchpadControllerState = com.metallic.chiaki.lib.ControllerState()
 
 	private fun updateCombinedTouchState() {
-		viewModel.input.touchControllerState = lastFragmentControllerState or lastStreamTouchpadControllerState
+		viewModel.input.touchControllerState = lastFragmentControllerState or lastStreamTouchpadControllerState or lastSecondScreenControllerState
+	}
+
+	private var secondScreen: SecondScreenPresentation? = null
+	private var lastSecondScreenControllerState = com.metallic.chiaki.lib.ControllerState()
+
+	private val displayListener = object: DisplayManager.DisplayListener
+	{
+		override fun onDisplayAdded(displayId: Int) = updateSecondScreen()
+		override fun onDisplayRemoved(displayId: Int) = updateSecondScreen()
+		override fun onDisplayChanged(displayId: Int) = updateSecondScreen()
+	}
+
+	private fun currentDisplayId() =
+		(if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) display else null)?.displayId
+			?: @Suppress("DEPRECATION") windowManager.defaultDisplay.displayId
+
+	/**
+	 * On dual-screen handhelds, the touchpad and the PS, Create and Options buttons go on the second
+	 * screen while the stream is in front, and not in picture-in-picture
+	 */
+	private fun updateSecondScreen()
+	{
+		val display = if(Preferences(this).secondScreen && lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) && !isInPictureInPictureMode)
+			SecondScreen.find(this, currentDisplayId())
+		else
+			null
+		val current = secondScreen
+		if(current != null && current.isShowing && current.display.displayId == display?.displayId)
+			return
+		current?.dismiss()
+		secondScreen = null
+		if(display == null)
+			return
+		Log.i(TAG, "Second screen: ${SecondScreen.describe(display)}")
+		val presentation = SecondScreenPresentation(this, display, viewModel.session.connectInfo.ps5,
+			{ state ->
+				lastSecondScreenControllerState = state
+				updateCombinedTouchState()
+			}, this::showStreamMenu, this::dispatchKeyEvent)
+		try
+		{
+			presentation.show()
+			secondScreen = presentation
+		}
+		catch(e: WindowManager.InvalidDisplayException)
+		{
+			Log.w(TAG, "The second screen doesn't take the touchpad", e)
+		}
 	}
 
 	private val controlsDisposable = CompositeDisposable()
@@ -337,6 +386,8 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		if(Preferences(this).streamStatsEnabled)
 			setStatsVisible(true)
 		statsHandler.post(checkBatteryRunnable)
+		getSystemService(DisplayManager::class.java)?.registerDisplayListener(displayListener, Handler(Looper.getMainLooper()))
+		updateSecondScreen()
 	}
 
 	override fun onResume()
@@ -386,6 +437,9 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		statsHandler.removeCallbacks(checkBatteryRunnable)
 		viewModel.session.pause()
 		countPlayTime()
+		getSystemService(DisplayManager::class.java)?.unregisterDisplayListener(displayListener)
+		secondScreen?.dismiss()
+		secondScreen = null
 		// Leaving the app ends the stream, as it always has. So does closing the small window.
 		if(!isChangingConfigurations)
 			finish()
@@ -483,6 +537,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 	{
 		super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
 		Log.i(TAG, "Picture-in-picture: $isInPictureInPictureMode")
+		updateSecondScreen()
 		// Closing the small window stops the activity first
 		if(!isInPictureInPictureMode && lifecycle.currentState == Lifecycle.State.CREATED)
 		{

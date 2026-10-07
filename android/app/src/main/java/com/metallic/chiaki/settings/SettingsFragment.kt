@@ -48,6 +48,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 		preferences.debandingEnabledKey -> preferences.debandingEnabled
 		preferences.upscalingEnabledKey -> preferences.upscalingEnabled
 		preferences.touchscreenTouchpadEnabledKey -> preferences.touchscreenTouchpadEnabled
+		preferences.secondScreenKey -> preferences.secondScreen
 		preferences.pictureInPictureKey -> preferences.pictureInPicture
 		else -> defValue
 	}
@@ -65,6 +66,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 			preferences.debandingEnabledKey -> preferences.debandingEnabled = value
 			preferences.upscalingEnabledKey -> preferences.upscalingEnabled = value
 			preferences.touchscreenTouchpadEnabledKey -> preferences.touchscreenTouchpadEnabled = value
+			preferences.secondScreenKey -> preferences.secondScreen = value
 			preferences.pictureInPictureKey -> preferences.pictureInPicture = value
 		}
 	}
@@ -205,6 +207,10 @@ class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 			it.intent = Intent(Intent.ACTION_VIEW, Uri.parse(supportUrl))
 		}
 		preferenceScreen.findPreference<Preference>("about_feedback")?.setOnPreferenceClickListener { sendFeedback(); true }
+
+		// Only where there is a second screen, such as on dual-screen handhelds
+		preferenceScreen.findPreference<Preference>(preferences.secondScreenKey)?.isVisible =
+			com.metallic.chiaki.stream.SecondScreen.find(context, android.view.Display.DEFAULT_DISPLAY) != null
 
 		preferenceScreen.findPreference<Preference>(preferences.pictureInPictureKey)?.isVisible =
 			Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && context.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)

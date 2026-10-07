@@ -167,6 +167,12 @@ class Preferences(context: Context)
 		get() = sharedPreferences.getBoolean(pictureInPictureKey, !isTv)
 		set(value) { sharedPreferences.edit().putBoolean(pictureInPictureKey, value).apply() }
 
+	/** Dual-screen handhelds: the touchpad and the PS, Create and Options buttons on the second screen */
+	val secondScreenKey get() = "second_screen"
+	var secondScreen: Boolean
+		get() = sharedPreferences.getBoolean(secondScreenKey, true)
+		set(value) { sharedPreferences.edit().putBoolean(secondScreenKey, value).apply() }
+
 	/** Time spent streaming, for the one-time thank-you on the main screen */
 	var playTimeMs: Long
 		get() = sharedPreferences.getLong("play_time_ms", 0)

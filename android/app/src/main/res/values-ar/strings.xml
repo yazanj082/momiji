@@ -313,6 +313,10 @@
     <string name="action_delete">حذف</string>
     <string name="action_edit">تعديل</string>
     <string name="action_rename_console">إعادة التسمية</string>
+    <string name="preferences_second_screen_title">الشاشة الثانية</string>
+    <string name="preferences_second_screen_summary">في الأجهزة المحمولة ذات الشاشتين مثل AYN Thor، تظهر لوحة اللمس وأزرار PS و Create و Options على الشاشة الثانية أثناء اللعب</string>
+    <string name="second_screen_touchpad">لوحة اللمس</string>
+    <string name="second_screen_menu">قائمة البث</string>
     <string name="action_save">حفظ</string>
     <string name="rename_console_title">إعادة تسمية جهاز الألعاب</string>
     <string name="rename_console_hint">الاسم في Momiji واختصاراته</string>

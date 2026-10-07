@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The touchpad while it is clicked -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#40FFFFFF" />
+    <corners android:radius="28dp" />
+</shape>

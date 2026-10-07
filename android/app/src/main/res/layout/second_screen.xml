@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The second screen of dual-screen handhelds, see SecondScreenPresentation. Physical layout, like a controller. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/stream_background"
+    android:layoutDirection="ltr"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="@drawable/second_screen_touchpad">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:importantForAccessibility="no"
+            android:text="@string/second_screen_touchpad"
+            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:textColor="#59FFFFFF" />
+
+        <com.metallic.chiaki.touchcontrols.TouchpadView
+            android:id="@+id/touchpad"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@string/second_screen_touchpad"
+            app:drawableIdle="@drawable/second_screen_touchpad_touched"
+            app:drawablePressed="@drawable/second_screen_touchpad_pressed" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/createButton"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:text="@string/second_screen_create" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/psButton"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:text="@string/second_screen_ps" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/optionsButton"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:text="@string/second_screen_options" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/menuButton"
+            style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:contentDescription="@string/second_screen_menu"
+            app:icon="@drawable/ic_more_vert" />
+    </LinearLayout>
+</LinearLayout>

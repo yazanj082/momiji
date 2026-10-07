@@ -328,6 +328,14 @@
     <string name="action_delete">Delete</string>
     <string name="action_edit">Edit</string>
     <string name="action_rename_console">Rename</string>
+    <string name="preferences_second_screen_title">Second screen</string>
+    <string name="preferences_second_screen_summary">On dual-screen handhelds like the AYN Thor, the touchpad and the PS, Create and Options buttons go on the second screen while you play</string>
+    <string name="second_screen_touchpad">Touchpad</string>
+    <string name="second_screen_menu">Stream menu</string>
+    <string name="second_screen_create" translatable="false">Create</string>
+    <string name="second_screen_share" translatable="false">Share</string>
+    <string name="second_screen_ps" translatable="false">PS</string>
+    <string name="second_screen_options" translatable="false">Options</string>
     <string name="action_save">Save</string>
     <string name="rename_console_title">Rename console</string>
     <string name="rename_console_hint">Name in Momiji and its shortcuts</string>

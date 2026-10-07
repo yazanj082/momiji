@@ -66,6 +66,14 @@
             app:icon="@drawable/ic_rumble" />
 
         <SwitchPreference
+            app:key="second_screen"
+            app:title="@string/preferences_second_screen_title"
+            app:summary="@string/preferences_second_screen_summary"
+            app:defaultValue="true"
+            app:isPreferenceVisible="false"
+            app:icon="@drawable/ic_gamepad" />
+
+        <SwitchPreference
             app:key="preferences_touchscreen_touchpad_enabled"
             app:title="@string/preferences_touchscreen_touchpad_title"
             app:summary="@string/preferences_touchscreen_touchpad_summary"
