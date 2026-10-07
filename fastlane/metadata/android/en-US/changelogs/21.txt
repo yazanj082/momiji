@@ -1,0 +1,1 @@
+Rename a console from its menu, for example to tell two consoles apart. The new name also goes on its home screen shortcut, the widget, the Quick Settings tile and the Android TV row. After 10 hours of play, the main screen says thanks once.
