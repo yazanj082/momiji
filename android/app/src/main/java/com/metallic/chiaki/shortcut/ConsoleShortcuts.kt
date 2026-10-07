@@ -10,6 +10,7 @@ import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
 import androidx.preference.PreferenceManager
 import com.metallic.chiaki.R
+import com.metallic.chiaki.common.Preferences
 import com.metallic.chiaki.common.RegisteredHost
 import com.metallic.chiaki.common.getDatabase
 import io.reactivex.schedulers.Schedulers
@@ -32,8 +33,11 @@ object ConsoleShortcuts
 
 	class Console(val mac: Long, val name: String, val ps5: Boolean)
 
-	fun console(registeredHost: RegisteredHost, name: String?) =
-		Console(registeredHost.serverMac.value, name ?: registeredHost.serverNickname ?: registeredHost.serverMac.toString(), registeredHost.target.isPS5)
+	/** The name given to the console here comes first */
+	fun console(context: Context, registeredHost: RegisteredHost, name: String?) =
+		Console(registeredHost.serverMac.value,
+			Preferences(context).consoleName(registeredHost.serverMac) ?: name ?: registeredHost.serverNickname ?: registeredHost.serverMac.toString(),
+			registeredHost.target.isPS5)
 
 	private fun id(mac: Long) = ID_PREFIX + mac.toString(16)
 
@@ -92,11 +96,19 @@ object ConsoleShortcuts
 	 */
 	fun update(context: Context, registeredHosts: List<RegisteredHost>)
 	{
-		val consoles = registeredHosts.sortedByDescending { it.id }.distinctBy { it.serverMac }.map { console(it, null) }
+		val consoles = registeredHosts.sortedByDescending { it.id }.distinctBy { it.serverMac }.map { console(context, it, null) }
 		val byId = consoles.associateBy { id(it.mac) }
 		val last = lastPlayed(context)
 		TvHomeChannel.update(context, consoles.sortedByDescending { it.mac == last?.mac })
-		if(last != null && byId[id(last.mac)] == null)
+		val lastNow = last?.let { byId[id(it.mac)] }
+		if(last != null && lastNow != null && lastNow.name != last.name)
+		{
+			// Renamed: the tile and the widget show the new name
+			PreferenceManager.getDefaultSharedPreferences(context).edit { putString(KEY_LAST_NAME, lastNow.name) }
+			PlayWidgetProvider.update(context)
+			PlayTileService.requestUpdate(context)
+		}
+		if(last != null && lastNow == null)
 		{
 			PreferenceManager.getDefaultSharedPreferences(context).edit {
 				remove(KEY_LAST_MAC)

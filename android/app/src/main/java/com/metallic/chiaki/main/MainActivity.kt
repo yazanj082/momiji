@@ -104,7 +104,7 @@ class MainActivity : AppCompatActivity()
 
 		val hostsAdapter = DisplayHostRecyclerViewAdapter(this::hostTriggered, this::wakeupHost, this::putInRestMode,
 			this::registerHostAgain, this::removeRegistration, this::editHost, this::deleteHost,
-			this::addToHomeScreen.takeIf { ConsoleShortcuts.canPin(this) }, this::chooseQuality)
+			this::addToHomeScreen.takeIf { ConsoleShortcuts.canPin(this) }, this::chooseQuality, this::renameConsole)
 		val supportAdapter = SupportFooterAdapter(this::openSupportPage)
 		binding.hostsRecyclerView.adapter = ConcatAdapter(hostsAdapter, supportAdapter)
 		layoutManager = GridLayoutManager(this, 1)
@@ -323,7 +323,7 @@ class MainActivity : AppCompatActivity()
 
 	private fun startStream(host: DisplayHost, connectInfo: ConnectInfo)
 	{
-		host.registeredHost?.let { ConsoleShortcuts.played(this, ConsoleShortcuts.console(it, host.name)) }
+		host.registeredHost?.let { ConsoleShortcuts.played(this, ConsoleShortcuts.console(this, it, host.name)) }
 		Intent(this, StreamActivity::class.java).let {
 			it.putExtra(StreamActivity.EXTRA_CONNECT_INFO, connectInfo)
 			// The stream gets a task of its own, as picture-in-picture didn't start for it on top of
@@ -533,10 +533,49 @@ class MainActivity : AppCompatActivity()
 			.show()
 	}
 
+	/** A name of one's own for the console, also for its shortcuts, the tile, the widget and the TV's row */
+	private fun renameConsole(host: DisplayHost)
+	{
+		val registeredHost = host.registeredHost ?: return
+		val mac = registeredHost.serverMac
+		val current = Preferences(this).consoleName(mac)
+		val ownName = (host as? DiscoveredDisplayHost)?.discoveredHost?.hostName ?: registeredHost.serverNickname ?: host.host
+		val input = com.google.android.material.textfield.TextInputEditText(this).apply {
+			setText(current ?: ownName)
+			setSelectAllOnFocus(true)
+			isSingleLine = true
+		}
+		val field = com.google.android.material.textfield.TextInputLayout(this).apply {
+			hint = getString(R.string.rename_console_hint)
+			addView(input)
+		}
+		val padding = (24 * resources.displayMetrics.density).toInt()
+		val container = android.widget.FrameLayout(this).apply {
+			setPadding(padding, padding / 2, padding, 0)
+			addView(field)
+		}
+		fun save(name: String?)
+		{
+			viewModel.renameConsole(mac, name?.trim()?.takeIf { it.isNotEmpty() && it != ownName })
+			viewModel.registeredHosts.value?.let { ConsoleShortcuts.update(this, it) }
+		}
+		val builder = MaterialAlertDialogBuilder(this)
+			.setTitle(R.string.rename_console_title)
+			.setView(container)
+			.setPositiveButton(R.string.action_save) { _, _ -> save(input.text?.toString()) }
+			.setNegativeButton(android.R.string.cancel, null)
+		if(current != null)
+			builder.setNeutralButton(getString(R.string.rename_console_reset, ownName)) { _, _ -> save(null) }
+		val dialog = builder.create()
+		dialog.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
+		dialog.show()
+		input.requestFocus()
+	}
+
 	private fun addToHomeScreen(host: DisplayHost)
 	{
 		val registeredHost = host.registeredHost ?: return
-		if(!ConsoleShortcuts.pin(this, ConsoleShortcuts.console(registeredHost, host.name)))
+		if(!ConsoleShortcuts.pin(this, ConsoleShortcuts.console(this, registeredHost, host.name)))
 			Toast.makeText(this, R.string.shortcut_pin_failed, Toast.LENGTH_LONG).show()
 	}
 

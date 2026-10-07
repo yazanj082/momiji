@@ -131,13 +131,25 @@ class MainViewModel(val database: AppDatabase, val preferences: Preferences, val
 		startLocalSearch()
 	}
 
+	/** Signals that a console was renamed */
+	private val consoleNamesChanged = BehaviorSubject.createDefault(Unit)
+
+	fun renameConsole(mac: MacAddress, name: String?)
+	{
+		preferences.setConsoleName(mac, name)
+		consoleNamesChanged.onNext(Unit)
+	}
+
+	private fun alias(registeredHost: RegisteredHost?) = registeredHost?.let { preferences.consoleName(it.serverMac) }
+
 	val displayHosts = Observables.combineLatest(
 			database.manualHostDao().getAll().toObservable(),
 			database.registeredHostDao().getAll().toObservable(),
 			discoveryManager.discoveredHosts,
 			Observables.combineLatest(psnDevices, localSearchDone, Observable.interval(0, PSN_RECHECK_SECONDS, TimeUnit.SECONDS))
-				{ devices, done, _ -> if(done) devices else Optional.empty() })
-			{ manualHosts, registeredHosts, discoveredHosts, psnDevices ->
+				{ devices, done, _ -> if(done) devices else Optional.empty() },
+			consoleNamesChanged)
+			{ manualHosts, registeredHosts, discoveredHosts, psnDevices, _ ->
 				val now = SystemClock.elapsedRealtime()
 				discoveredHosts.forEach { host ->
 					host.hostName?.let { seenHere[it] = now }
@@ -146,10 +158,12 @@ class MainViewModel(val database: AppDatabase, val preferences: Preferences, val
 				val macRegisteredHosts = registeredHosts.associateBy { it.serverMac }
 				val idRegisteredHosts = registeredHosts.associateBy { it.id }
 				discoveredHosts.map {
-					DiscoveredDisplayHost(it.serverMac?.let { mac -> macRegisteredHosts[mac] }, it)
+					val registeredHost = it.serverMac?.let { mac -> macRegisteredHosts[mac] }
+					DiscoveredDisplayHost(registeredHost, it, alias(registeredHost))
 				} +
 				manualHosts.map {
-					ManualDisplayHost(it.registeredHost?.let { id -> idRegisteredHosts[id] }, it)
+					val registeredHost = it.registeredHost?.let { id -> idRegisteredHosts[id] }
+					ManualDisplayHost(registeredHost, it, alias(registeredHost))
 				} +
 				(if(psnDevices.isPresent) psnDisplayHosts(registeredHosts, psnDevices.get(), now) else listOf())
 			}
@@ -189,12 +203,12 @@ class MainViewModel(val database: AppDatabase, val preferences: Preferences, val
 			val registeredHost = registeredPS5.firstOrNull { it.serverNickname == device.asciiName || it.serverNickname == device.name }
 			if(seen(device.asciiName) || (registeredHost != null && seen(macKey(registeredHost.serverMac))))
 				return@mapNotNull null
-			PsnDisplayHost(registeredHost, device.name, device.uid, true)
+			PsnDisplayHost(registeredHost, alias(registeredHost) ?: device.name, device.uid, true)
 		}
 		val registeredPS4 = registered.filter { !it.target.isPS5 }
 		val ps4 = registeredPS4.firstOrNull()
 			?.takeIf { registeredPS4.none { seen(macKey(it.serverMac)) } }
-			?.let { PsnDisplayHost(it, (if(registeredPS4.size == 1) it.serverNickname else null) ?: mainPs4Name, MAIN_PS4_UID, false) }
+			?.let { PsnDisplayHost(it, alias(it) ?: (if(registeredPS4.size == 1) it.serverNickname else null) ?: mainPs4Name, MAIN_PS4_UID, false) }
 		return hosts + listOfNotNull(ps4)
 	}
 

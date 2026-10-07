@@ -6,6 +6,8 @@
         android:title="@string/action_rest_mode"/>
     <item android:id="@+id/action_stream_quality"
         android:title="@string/quality_console_menu"/>
+    <item android:id="@+id/action_rename"
+        android:title="@string/action_rename_console"/>
     <item android:id="@+id/action_add_to_home_screen"
         android:title="@string/action_add_to_home_screen"/>
     <item android:id="@+id/action_register_again"

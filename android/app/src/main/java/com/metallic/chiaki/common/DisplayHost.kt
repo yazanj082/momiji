@@ -17,11 +17,13 @@ sealed class DisplayHost
 
 class DiscoveredDisplayHost(
 	override val registeredHost: RegisteredHost?,
-	val discoveredHost: DiscoveryHost
+	val discoveredHost: DiscoveryHost,
+	/** The name given to the console here, if any */
+	val alias: String? = null
 ): DisplayHost()
 {
 	override val host get() = discoveredHost.hostAddr ?: ""
-	override val name get() = discoveredHost.hostName ?: registeredHost?.serverNickname
+	override val name get() = alias ?: discoveredHost.hostName ?: registeredHost?.serverNickname
 	override val id get() = discoveredHost.hostId ?: registeredHost?.serverMac?.toString()
 	override val isPS5 get() = discoveredHost.isPS5
 
@@ -29,20 +31,22 @@ class DiscoveredDisplayHost(
 		if(other !is DiscoveredDisplayHost)
 			false
 		else
-			other.discoveredHost == discoveredHost && other.registeredHost == registeredHost
+			other.discoveredHost == discoveredHost && other.registeredHost == registeredHost && other.alias == alias
 
-	override fun hashCode() = 31 * (registeredHost?.hashCode() ?: 0) + discoveredHost.hashCode()
+	override fun hashCode() = 31 * (31 * (registeredHost?.hashCode() ?: 0) + discoveredHost.hashCode()) + (alias?.hashCode() ?: 0)
 
 	override fun toString() = "DiscoveredDisplayHost{${registeredHost}, ${discoveredHost}}"
 }
 
 class ManualDisplayHost(
 	override val registeredHost: RegisteredHost?,
-	val manualHost: ManualHost
+	val manualHost: ManualHost,
+	/** The name given to the console here, if any */
+	val alias: String? = null
 ): DisplayHost()
 {
 	override val host get() = manualHost.host
-	override val name get() = registeredHost?.serverNickname
+	override val name get() = alias ?: registeredHost?.serverNickname
 	override val id get() = registeredHost?.serverMac?.toString()
 	override val isPS5: Boolean get() = registeredHost?.target?.isPS5 ?: false
 
@@ -50,9 +54,9 @@ class ManualDisplayHost(
 		if(other !is ManualDisplayHost)
 			false
 		else
-			other.manualHost == manualHost && other.registeredHost == registeredHost
+			other.manualHost == manualHost && other.registeredHost == registeredHost && other.alias == alias
 
-	override fun hashCode() = 31 * (registeredHost?.hashCode() ?: 0) + manualHost.hashCode()
+	override fun hashCode() = 31 * (31 * (registeredHost?.hashCode() ?: 0) + manualHost.hashCode()) + (alias?.hashCode() ?: 0)
 
 	override fun toString() = "ManualDisplayHost{${registeredHost}, ${manualHost}}"
 }

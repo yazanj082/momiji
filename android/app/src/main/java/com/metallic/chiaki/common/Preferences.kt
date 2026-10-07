@@ -230,6 +230,18 @@ class Preferences(context: Context)
 		get() = Quality.fromValue(sharedPreferences.getString(qualityAwayKey, null)) ?: qualityAwayDefault
 		set(value) { sharedPreferences.edit().putString(qualityAwayKey, value.value).apply() }
 
+	private fun consoleNameKey(mac: MacAddress) = "console/${mac.value}/name"
+
+	/** A name given to the console here, for example to tell two of them apart, instead of its own */
+	fun consoleName(mac: MacAddress): String? = sharedPreferences.getString(consoleNameKey(mac), null)?.takeIf { it.isNotBlank() }
+
+	fun setConsoleName(mac: MacAddress, name: String?) = sharedPreferences.edit().also {
+		if(name.isNullOrBlank())
+			it.remove(consoleNameKey(mac))
+		else
+			it.putString(consoleNameKey(mac), name.trim())
+	}.apply()
+
 	private fun consoleQualityKey(mac: MacAddress) = "console/${mac.value}/quality"
 
 	/** The quality of a console, or null for the one in the settings */

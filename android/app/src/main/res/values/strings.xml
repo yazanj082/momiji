@@ -327,6 +327,11 @@
     <string name="action_keep">Keep</string>
     <string name="action_delete">Delete</string>
     <string name="action_edit">Edit</string>
+    <string name="action_rename_console">Rename</string>
+    <string name="action_save">Save</string>
+    <string name="rename_console_title">Rename console</string>
+    <string name="rename_console_hint">Name in Momiji and its shortcuts</string>
+    <string name="rename_console_reset">Use %s</string>
     <string name="session_logs_empty_info">No Session Logs recorded.</string>
     <string name="registered_hosts_empty_info">No Consoles registered.</string>
     <string name="display_hosts_empty_title">No consoles yet</string>

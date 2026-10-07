@@ -39,7 +39,8 @@ class DisplayHostRecyclerViewAdapter(
 	val deleteCallback: (DisplayHost) -> Unit,
 	/** Null if the launcher can't add shortcuts to the home screen */
 	val addToHomeScreenCallback: ((DisplayHost) -> Unit)?,
-	val qualityCallback: (DisplayHost) -> Unit
+	val qualityCallback: (DisplayHost) -> Unit,
+	val renameCallback: (DisplayHost) -> Unit
 ): RecyclerView.Adapter<DisplayHostRecyclerViewAdapter.ViewHolder>()
 {
 	var hosts: List<DisplayHost> = listOf()
@@ -122,6 +123,7 @@ class DisplayHostRecyclerViewAdapter(
 					menu.menu.findItem(R.id.action_remove_registration).isVisible = registered
 					menu.menu.findItem(R.id.action_add_to_home_screen).isVisible = registered && addToHomeScreenCallback != null
 					menu.menu.findItem(R.id.action_stream_quality).isVisible = registered
+					menu.menu.findItem(R.id.action_rename).isVisible = registered
 					menu.menu.findItem(R.id.action_edit).isVisible = canEditDelete
 					menu.menu.findItem(R.id.action_delete).isVisible = canEditDelete
 					menu.setOnMenuItemClickListener { menuItem ->
@@ -133,6 +135,7 @@ class DisplayHostRecyclerViewAdapter(
 							R.id.action_remove_registration -> removeRegistrationCallback(host)
 							R.id.action_add_to_home_screen -> addToHomeScreenCallback?.invoke(host)
 							R.id.action_stream_quality -> qualityCallback(host)
+							R.id.action_rename -> renameCallback(host)
 							R.id.action_edit -> editCallback(host)
 							R.id.action_delete -> deleteCallback(host)
 							else -> return@setOnMenuItemClickListener false

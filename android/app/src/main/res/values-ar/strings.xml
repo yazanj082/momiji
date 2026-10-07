@@ -312,6 +312,11 @@
     <string name="action_keep">إبقاء</string>
     <string name="action_delete">حذف</string>
     <string name="action_edit">تعديل</string>
+    <string name="action_rename_console">إعادة التسمية</string>
+    <string name="action_save">حفظ</string>
+    <string name="rename_console_title">إعادة تسمية جهاز الألعاب</string>
+    <string name="rename_console_hint">الاسم في Momiji واختصاراته</string>
+    <string name="rename_console_reset">استخدام %s</string>
     <string name="session_logs_empty_info">لا توجد سجلات جلسات.</string>
     <string name="registered_hosts_empty_info">لا توجد أجهزة ألعاب مسجّلة.</string>
     <string name="display_hosts_empty_title">لا توجد أجهزة ألعاب بعد</string>
