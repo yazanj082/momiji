@@ -14,6 +14,7 @@ Momiji streams games from your PS5 or PS4 to your Android phone, tablet, TV box 
 • Button mapping, stick dead zone and a test for each controller, and its battery level in the stream menu.
 • DualSense touch haptics on the controller's own actuators over USB, its light bar, gyro and touchpad.
 • On-screen controls for touch, hidden while a controller is connected.
+• On dual-screen handhelds like the AYN Thor, the second screen becomes the touchpad, with the PS, Create and Options buttons.
 
 <b>Great picture, low latency</b>
 • Up to 1080p at 60 fps, with H.264 or HEVC and up to 100 Mbps.

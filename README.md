@@ -14,6 +14,7 @@ Momiji streams games from your PS5 or PS4 to Android phones, tablets, TV boxes a
 - **Super resolution**: an optional upscaler sharpens the stream on screens with more pixels than it, such as a 720p stream on a 1080p phone, or a 4K TV.
 - **Low latency**: hardware decoding in low latency mode, the display's refresh rate matched to the stream, and the phone's low latency Wi-Fi mode. Optional statistics show the bitrate, packet loss, ping and decoding time.
 - **Picture-in-picture**: leaving the app keeps the stream going in a small window.
+- **Dual-screen handhelds** such as the AYN Thor: the second screen becomes the DualSense touchpad while you play, with the PS, Create and Options buttons and the stream menu.
 - **TV boxes**: works with a TV remote or controller, and can start right into Momiji. Press **L1 + R1 + Options + Create** together to open the stream menu with just a controller.
 - **Samsung DeX**: the stream fills the whole screen, and its sound plays on the TV even with a DualSense plugged in by USB.
 - **Languages**: English and Arabic. On Android 13 and later, Momiji's language can be set apart from the device's.
