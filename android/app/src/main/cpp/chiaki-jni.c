@@ -205,6 +205,29 @@ static void android_chiaki_cant_display_cb(void *user, bool cant_display)
 // Vibration is updated at most this often from the haptics, which arrive every few ms
 #define HAPTICS_RUMBLE_INTERVAL_US 16000
 
+// Average amplitude of the haptics that makes the rumble full strength, half of the maximum
+#define HAPTICS_RUMBLE_FULL 16384
+// Quieter haptics don't vibrate at all, like the constant faint background of some games
+#define HAPTICS_RUMBLE_MIN 1000
+// The faintest vibration, kept for light haptics
+#define HAPTICS_RUMBLE_FAINT (0xff / 8)
+
+/**
+ * Rumble motors feel much stronger than the DualSense's actuators, so the vibration follows the
+ * square of the loudness: light haptics, like the textures of surfaces, stay faint, and strong
+ * hits still reach full strength. Up to medium loudness, this is about as strong as chiaki-ng's
+ * default on desktop.
+ */
+static uint32_t haptics_rumble_level(uint32_t amplitude)
+{
+	if(amplitude < HAPTICS_RUMBLE_MIN)
+		return 0;
+	if(amplitude >= HAPTICS_RUMBLE_FULL)
+		return 0xff;
+	uint32_t level = (uint32_t)((uint64_t)amplitude * amplitude * 0xff / ((uint64_t)HAPTICS_RUMBLE_FULL * HAPTICS_RUMBLE_FULL));
+	return level > HAPTICS_RUMBLE_FAINT ? level : HAPTICS_RUMBLE_FAINT;
+}
+
 /**
  * The console streams DualSense haptics as 3 kHz stereo PCM. With the DualSense on USB,
  * they are played on its voice coil actuators, see haptics-output.h.
@@ -235,9 +258,8 @@ static void android_chiaki_haptics_frame_cb(uint8_t *buf, size_t buf_size, void 
 		sum_left += abs(sample[0]);
 		sum_right += abs(sample[1]);
 	}
-	// Average amplitude of 8192 and above is full strength
-	uint32_t left = (sum_left / samples) >> 5;
-	uint32_t right = (sum_right / samples) >> 5;
+	uint32_t left = haptics_rumble_level(sum_left / samples);
+	uint32_t right = haptics_rumble_level(sum_right / samples);
 	if(left > session->haptics_peak_left)
 		session->haptics_peak_left = left > 0xff ? 0xff : left;
 	if(right > session->haptics_peak_right)
