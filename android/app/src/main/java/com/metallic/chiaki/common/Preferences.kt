@@ -167,6 +167,16 @@ class Preferences(context: Context)
 		get() = sharedPreferences.getBoolean(pictureInPictureKey, !isTv)
 		set(value) { sharedPreferences.edit().putBoolean(pictureInPictureKey, value).apply() }
 
+	/** Time spent streaming, for the one-time thank-you on the main screen */
+	var playTimeMs: Long
+		get() = sharedPreferences.getLong("play_time_ms", 0)
+		set(value) { sharedPreferences.edit().putLong("play_time_ms", value).apply() }
+
+	/** Whether the one-time thank-you was answered, either way */
+	var supportPromptDone: Boolean
+		get() = sharedPreferences.getBoolean("support_prompt_done", false)
+		set(value) { sharedPreferences.edit().putBoolean("support_prompt_done", value).apply() }
+
 	val streamStatsEnabledKey get() = "stream_stats_enabled"
 	var streamStatsEnabled
 		get() = sharedPreferences.getBoolean(streamStatsEnabledKey, false)

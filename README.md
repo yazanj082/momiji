@@ -53,7 +53,7 @@ Both run on Android 7.0 and newer.
 
 ## Support
 
-Momiji is free and has no ads. If you enjoy it, you can support its development with a crypto donation. Thank you!
+Momiji is free and has no ads. It's made by one developer in Palestine, where PayPal, Stripe and similar services don't work, so donations are only possible in crypto. If you enjoy Momiji, a donation helps keep it going. Thank you!
 
 | Coin | Network | Address | QR code |
 | --- | --- | --- | --- |

@@ -324,6 +324,9 @@
     <string name="display_hosts_empty_discovery_on_info">جارٍ البحث في شبكتك… يجب أن يكون جهاز الألعاب يعمل أو في وضع الراحة، وعلى الشبكة نفسها.</string>
     <string name="display_hosts_empty_vpn_info">شبكة VPN مفعّلة، وقد تُخفي أجهزة الألعاب على شبكتك المنزلية. أوقفها، أو اسمح باتصالات الشبكة المحلية (LAN) في تطبيق VPN.</string>
     <string name="support_info">تطبيق Momiji مجاني ومفتوح المصدر. إن أعجبك، يمكنك دعم تطويره.</string>
+    <string name="support_prompt_title">شكرًا لأنك تلعب</string>
+    <string name="support_prompt_text">لعبت أكثر من 10 ساعات مع Momiji. التطبيق مجاني، بلا إعلانات، ويطوّره مطوّر واحد.</string>
+    <string name="support_prompt_dismiss">إغلاق</string>
     <string name="action_support">ادعم Momiji</string>
     <string name="preferences_category_title_about">حول التطبيق</string>
     <string name="preferences_about_version">الإصدار %s · مجاني ومفتوح المصدر بموجب ترخيص AGPL-3.0</string>

@@ -106,11 +106,14 @@ class MainActivity : AppCompatActivity()
 			this::registerHostAgain, this::removeRegistration, this::editHost, this::deleteHost,
 			this::addToHomeScreen.takeIf { ConsoleShortcuts.canPin(this) }, this::chooseQuality, this::renameConsole)
 		val supportAdapter = SupportFooterAdapter(this::openSupportPage)
-		binding.hostsRecyclerView.adapter = ConcatAdapter(hostsAdapter, supportAdapter)
+		supportPromptAdapter = SupportPromptAdapter({ answerSupportPrompt(); openSupportPage() }, this::answerSupportPrompt)
+		binding.hostsRecyclerView.adapter = ConcatAdapter(supportPromptAdapter, hostsAdapter, supportAdapter)
 		layoutManager = GridLayoutManager(this, 1)
 		layoutManager.spanSizeLookup = object: GridLayoutManager.SpanSizeLookup()
 		{
-			override fun getSpanSize(position: Int) = if(position < hostsAdapter.itemCount) 1 else layoutManager.spanCount
+			// The consoles share the columns, the thank-you and the footer take a whole row
+			override fun getSpanSize(position: Int) =
+				if(position - supportPromptAdapter.itemCount in 0 until hostsAdapter.itemCount) 1 else layoutManager.spanCount
 		}
 		binding.hostsRecyclerView.layoutManager = layoutManager
 		updateSpanCount()
@@ -222,6 +225,22 @@ class MainActivity : AppCompatActivity()
 		dialog.show()
 	}
 
+	private lateinit var supportPromptAdapter: SupportPromptAdapter
+
+	/** After some hours of playing, Momiji asks once for support */
+	private fun updateSupportPrompt()
+	{
+		val preferences = Preferences(this)
+		supportPromptAdapter.visible = supportUrl.isNotEmpty() && !preferences.supportPromptDone
+			&& preferences.playTimeMs >= SupportPromptAdapter.PLAY_TIME_MS
+	}
+
+	private fun answerSupportPrompt()
+	{
+		Preferences(this).supportPromptDone = true
+		supportPromptAdapter.visible = false
+	}
+
 	private fun openSupportPage()
 	{
 		try
@@ -238,6 +257,7 @@ class MainActivity : AppCompatActivity()
 	override fun onStart()
 	{
 		super.onStart()
+		updateSupportPrompt()
 		viewModel.checkNetwork()
 		viewModel.discoveryManager.resume()
 		// Also after signing in or out

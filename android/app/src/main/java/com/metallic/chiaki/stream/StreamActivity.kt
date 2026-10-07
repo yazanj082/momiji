@@ -385,6 +385,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		statsHandler.removeCallbacks(updateStatsRunnable)
 		statsHandler.removeCallbacks(checkBatteryRunnable)
 		viewModel.session.pause()
+		countPlayTime()
 		// Leaving the app ends the stream, as it always has. So does closing the small window.
 		if(!isChangingConfigurations)
 			finish()
@@ -805,8 +806,24 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		InputDevice.getDevice(id)?.let { !it.isVirtual && it.sources and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD } ?: false
 	}
 
+	/** Since when the stream is playing, for the play time behind the one-time thank-you */
+	private var playingSinceMs: Long? = null
+
+	private fun countPlayTime()
+	{
+		val since = playingSinceMs ?: return
+		playingSinceMs = null
+		val preferences = Preferences(this)
+		preferences.playTimeMs += SystemClock.elapsedRealtime() - since
+	}
+
 	private fun stateChanged(state: StreamState)
 	{
+		if(state == StreamStateConnected && playingSinceMs == null)
+			playingSinceMs = SystemClock.elapsedRealtime()
+		else if(state is StreamStateQuit || state is StreamStateCreateError || state is StreamStatePsnError)
+			countPlayTime()
+
 		binding.progressBar.visibility = if(state == StreamStateConnecting || state is StreamStatePsnConnecting) View.VISIBLE else View.GONE
 		updatePictureInPictureParams()
 		binding.connectingTextView.isVisible = state is StreamStatePsnConnecting
