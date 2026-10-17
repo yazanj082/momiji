@@ -9,11 +9,23 @@
 
 #include <oboe/Oboe.h>
 
+#include <algorithm>
+#include <atomic>
+#include <cstdint>
 #include <mutex>
 #include <vector>
 
 #define BUFFER_CHUNK_SIZE 1024
 #define BUFFER_CHUNKS_COUNT 32
+
+// The audio comes at the console's pace but plays at the device's, which can be a little slower,
+// e.g. over HDMI. Then the buffer slowly fills up during a session, and the sound falls behind the
+// picture, up to the buffer's whole size (about 170 ms), where the newest audio gets dropped.
+// What is still queued when the buffer is at its lowest over CATCH_UP_WINDOW_MS is never needed:
+// once that is more than CATCH_UP_KEEP_MS + CATCH_UP_SLACK_MS, it's skipped down to CATCH_UP_KEEP_MS.
+#define CATCH_UP_WINDOW_MS 4000
+#define CATCH_UP_KEEP_MS 20
+#define CATCH_UP_SLACK_MS 20
 
 using AudioBuffer = CircularBuffer<BUFFER_CHUNKS_COUNT, BUFFER_CHUNK_SIZE>;
 
@@ -47,6 +59,18 @@ struct AudioOutput
 	std::mutex stream_mutex;
 	// Oboe's error thread might still use a replaced stream, so they are only deleted with the AudioOutput
 	std::vector<oboe::ManagedStream> old_streams;
+
+	// Bytes in buf. Signed, as the stream's callback can count a pop before the frame's push is counted.
+	std::atomic<int64_t> queued{0};
+	// The lowest the buffer got in the current window, and how long the window is so far.
+	// Only the stream's callback uses these.
+	int64_t window_lowest = INT64_MAX;
+	int64_t window_frames = 0;
+	// The lowest over the last window, for the statistics
+	std::atomic<int32_t> lowest_ms{0};
+	// Skipped by the callback, logged from the decoder's thread, as the callback shouldn't write files
+	std::atomic<int32_t> skipped_ms{0};
+	std::atomic<int32_t> skipped_from_ms{0};
 
 	AudioOutput() : stream_callback(this) {}
 };
@@ -135,8 +159,55 @@ extern "C" void android_chiaki_audio_output_frame(int16_t *buf, size_t samples_c
 
 	size_t buf_size = samples_count * sizeof(int16_t);
 	size_t pushed = ao->buf.Push(reinterpret_cast<uint8_t *>(buf), buf_size);
+	ao->queued.fetch_add(static_cast<int64_t>(pushed), std::memory_order_relaxed);
 	if(pushed < buf_size)
 		CHIAKI_LOGW(ao->log, "Audio Output Buffer Overflow!");
+
+	int32_t skipped_ms = ao->skipped_ms.exchange(0, std::memory_order_relaxed);
+	if(skipped_ms)
+		CHIAKI_LOGI(ao->log, "Audio Output was %d ms behind, skipped %d ms to catch up",
+				(int)ao->skipped_from_ms.load(std::memory_order_relaxed), (int)skipped_ms);
+}
+
+extern "C" int32_t android_chiaki_audio_output_buffered_ms(void *audio_output)
+{
+	auto ao = reinterpret_cast<AudioOutput *>(audio_output);
+	return ao->lowest_ms.load(std::memory_order_relaxed);
+}
+
+// Called by the stream's callback after it took its audio
+static void catch_up(AudioOutput *ao, oboe::AudioStream *stream, int32_t num_frames)
+{
+	int64_t bytes_per_frame = stream->getBytesPerFrame();
+	int64_t bytes_per_ms = static_cast<int64_t>(stream->getSampleRate()) * bytes_per_frame / 1000;
+	if(bytes_per_frame <= 0 || bytes_per_ms <= 0)
+		return;
+	int64_t queued = std::max<int64_t>(0, ao->queued.load(std::memory_order_relaxed));
+	ao->window_lowest = std::min(ao->window_lowest, queued);
+	ao->window_frames += num_frames;
+	if(ao->window_frames * 1000 < static_cast<int64_t>(stream->getSampleRate()) * CATCH_UP_WINDOW_MS)
+		return;
+
+	int64_t lowest = ao->window_lowest;
+	ao->window_lowest = INT64_MAX;
+	ao->window_frames = 0;
+	ao->lowest_ms.store(static_cast<int32_t>(lowest / bytes_per_ms), std::memory_order_relaxed);
+	if(lowest <= bytes_per_ms * (CATCH_UP_KEEP_MS + CATCH_UP_SLACK_MS))
+		return;
+
+	int64_t skip = (lowest - bytes_per_ms * CATCH_UP_KEEP_MS) / bytes_per_frame * bytes_per_frame;
+	uint8_t scratch[BUFFER_CHUNK_SIZE];
+	int64_t skipped = 0;
+	while(skipped < skip)
+	{
+		size_t popped = ao->buf.Pop(scratch, static_cast<size_t>(std::min<int64_t>(sizeof(scratch), skip - skipped)));
+		if(!popped)
+			break;
+		skipped += static_cast<int64_t>(popped);
+	}
+	ao->queued.fetch_sub(skipped, std::memory_order_relaxed);
+	ao->skipped_from_ms.store(static_cast<int32_t>(lowest / bytes_per_ms), std::memory_order_relaxed);
+	ao->skipped_ms.fetch_add(static_cast<int32_t>(skipped / bytes_per_ms), std::memory_order_relaxed);
 }
 
 oboe::DataCallbackResult AudioOutputCallback::onAudioReady(oboe::AudioStream *stream, void *audio_data, int32_t num_frames)
@@ -152,7 +223,8 @@ oboe::DataCallbackResult AudioOutputCallback::onAudioReady(oboe::AudioStream *st
 	auto buf = reinterpret_cast<uint8_t *>(audio_data);
 
 	size_t buf_size_delivered = audio_output->buf.Pop(buf, buf_size_requested);
-	//CHIAKI_LOGW(audio_output->log, "Delivered %llu", (unsigned long long)buf_size_delivered);
+	audio_output->queued.fetch_sub(static_cast<int64_t>(buf_size_delivered), std::memory_order_relaxed);
+	catch_up(audio_output, stream, num_frames);
 
 	if(buf_size_delivered < buf_size_requested)
 	{

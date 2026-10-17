@@ -18,6 +18,8 @@ void android_chiaki_audio_output_settings(uint32_t channels, uint32_t rate, void
  */
 void android_chiaki_audio_output_set_device(int32_t device_id, void *audio_output);
 void android_chiaki_audio_output_frame(int16_t *buf, size_t samples_count, void *audio_output);
+/** How much audio the buffer held at its lowest over the last few seconds, in ms */
+int32_t android_chiaki_audio_output_buffered_ms(void *audio_output);
 
 #ifdef __cplusplus
 }
