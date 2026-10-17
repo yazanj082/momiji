@@ -749,7 +749,9 @@ JNIEXPORT jint JNICALL JNI_FCN(sessionGotoBed)(JNIEnv *env, jobject obj, jlong p
 
 /**
  * Fills stats with the stream's bitrate in Mbit/s, packet loss (0 to 1), ping in ms measured when
- * connecting, the number of frames rendered so far, and the decode time's average and maximum in ms
+ * connecting, the number of frames rendered so far, the decode time's average and maximum in ms,
+ * the longest wait between two frames from the network since the last call in ms, and the audio
+ * buffer's lowest level over the last few seconds in ms
  */
 JNIEXPORT void JNICALL JNI_FCN(sessionGetStats)(JNIEnv *env, jobject obj, jlong ptr, jfloatArray stats_array)
 {
@@ -766,15 +768,28 @@ JNIEXPORT void JNICALL JNI_FCN(sessionGetStats)(JNIEnv *env, jobject obj, jlong 
 	uint64_t lost_new = lost - session->stats_lost;
 	session->stats_received = received;
 	session->stats_lost = lost;
-	jfloat stats[6] = {
+	jfloat stats[8] = {
 		(jfloat)session->session.stream_connection.measured_bitrate,
 		received_new + lost_new > 0 ? (jfloat)lost_new / (jfloat)(received_new + lost_new) : 0.0f,
 		(jfloat)(session->session.rtt_us / 1000.0),
 		(jfloat)__atomic_load_n(&decoder->frames_rendered, __ATOMIC_RELAXED),
 		(jfloat)(__atomic_load_n(&decoder->stats_latency_avg_us, __ATOMIC_RELAXED) / 1000.0),
-		(jfloat)(__atomic_load_n(&decoder->stats_latency_max_us, __ATOMIC_RELAXED) / 1000.0)
+		(jfloat)(__atomic_load_n(&decoder->stats_latency_max_us, __ATOMIC_RELAXED) / 1000.0),
+		(jfloat)(__atomic_exchange_n(&decoder->gap_max_stats_us, 0, __ATOMIC_RELAXED) / 1000.0),
+		(jfloat)android_chiaki_audio_output_buffered_ms(session->audio_output)
 	};
-	E->SetFloatArrayRegion(env, stats_array, 0, 6, stats);
+	E->SetFloatArrayRegion(env, stats_array, 0, 8, stats);
+}
+
+/** Writes a line from the app into the session's log, e.g. what the phone did during the stream */
+JNIEXPORT void JNICALL JNI_FCN(sessionLogInfo)(JNIEnv *env, jobject obj, jlong ptr, jstring text)
+{
+	AndroidChiakiSession *session = (AndroidChiakiSession *)ptr;
+	const char *str = E->GetStringUTFChars(env, text, NULL);
+	if(!str)
+		return;
+	CHIAKI_LOGI(session->log, "%s", str);
+	E->ReleaseStringUTFChars(env, text, str);
 }
 
 /**

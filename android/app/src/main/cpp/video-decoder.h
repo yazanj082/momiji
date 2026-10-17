@@ -41,6 +41,13 @@ typedef struct android_chiaki_video_decoder_t {
   uint32_t frames_rendered;
   uint32_t stats_latency_avg_us;
   uint32_t stats_latency_max_us;
+
+  // The longest wait between two frames from the network: a stream that comes
+  // in bursts (Wi-Fi power saving, a busy network) feels laggy without losses.
+  // Kept apart for the statistics and the log, which each take and reset it.
+  uint64_t last_sample_us;
+  uint32_t gap_max_stats_us;
+  uint32_t gap_max_log_us;
 } AndroidChiakiVideoDecoder;
 
 ChiakiErrorCode

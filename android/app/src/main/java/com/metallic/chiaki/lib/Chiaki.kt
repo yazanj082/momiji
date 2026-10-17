@@ -103,6 +103,7 @@ private class ChiakiNative
 		@JvmStatic external fun sessionSetLoginPin(ptr: Long, pin: String)
 		@JvmStatic external fun sessionGotoBed(ptr: Long): Int
 		@JvmStatic external fun sessionGetStats(ptr: Long, stats: FloatArray)
+		@JvmStatic external fun sessionLogInfo(ptr: Long, text: String)
 		@JvmStatic external fun holepunchListDevices(result: CreateResult, token: String, ps5: Boolean): Array<HolepunchDevice>?
 		@JvmStatic external fun holepunchCreate(token: String, logFile: String?, logVerbose: Boolean): Long
 		@JvmStatic external fun holepunchSessionCreate(ptr: Long): Int
@@ -485,7 +486,11 @@ data class StreamStats(
 	val pingMs: Float,
 	val framesRendered: Long,
 	val decodeMsAverage: Float,
-	val decodeMsMax: Float
+	val decodeMsMax: Float,
+	/** The longest wait between two frames from the network since the last call */
+	val frameGapMsMax: Float,
+	/** The audio buffer's lowest level over the last few seconds */
+	val audioBufferMs: Float
 )
 
 /**
@@ -611,11 +616,17 @@ class Session(connectInfo: ConnectInfo, logFile: String?, logVerbose: Boolean,
 	/** Puts the console in rest mode, once connected */
 	fun gotoBed() = ErrorCode(withNative { ChiakiNative.sessionGotoBed(it) } ?: ErrorCode.CANCELED)
 
+	/** Writes a line into the session's log */
+	fun logInfo(text: String)
+	{
+		withNative { ChiakiNative.sessionLogInfo(it, text) }
+	}
+
 	fun getStats(): StreamStats?
 	{
-		val stats = FloatArray(6)
+		val stats = FloatArray(8)
 		withNative { ChiakiNative.sessionGetStats(it, stats) } ?: return null
-		return StreamStats(stats[0], stats[1], stats[2], stats[3].toLong(), stats[4], stats[5])
+		return StreamStats(stats[0], stats[1], stats[2], stats[3].toLong(), stats[4], stats[5], stats[6], stats[7])
 	}
 
 	/**

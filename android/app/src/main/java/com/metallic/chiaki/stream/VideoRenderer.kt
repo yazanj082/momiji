@@ -15,6 +15,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
@@ -294,6 +295,13 @@ class VideoRenderer(
 
     // Frames queued by the decoder that have not been latched yet
     private val pendingFrames = AtomicInteger(0)
+
+    /**
+     * Frames the decoder delivered, and frames drawn with a new picture. When drawing can't keep
+     * up, e.g. on a phone that slows down as it heats up, the second falls behind the first.
+     */
+    val framesDelivered = AtomicLong(0)
+    val framesShown = AtomicLong(0)
     private var frameCount = 0f
 
     init {
@@ -421,6 +429,7 @@ class VideoRenderer(
                 repeat(pending) { _ -> it.updateTexImage() }
                 it.getTransformMatrix(stMatrix)
             }
+            framesShown.incrementAndGet()
         }
 
         // --- PASS 1: OES to FBO ---
@@ -486,6 +495,7 @@ class VideoRenderer(
 
     override fun onFrameAvailable(surfaceTexture: SurfaceTexture?) {
         pendingFrames.incrementAndGet()
+        framesDelivered.incrementAndGet()
         requestRender()
     }
 

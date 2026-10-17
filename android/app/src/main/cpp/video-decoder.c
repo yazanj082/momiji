@@ -10,6 +10,7 @@
 
 #include <chiaki/time.h>
 
+#include <stdint.h>
 #include <string.h>
 
 #define INPUT_BUFFER_TIMEOUT_MS 10
@@ -41,6 +42,9 @@ android_chiaki_video_decoder_init(AndroidChiakiVideoDecoder *decoder,
   decoder->stats_latency_avg_us = 0;
   decoder->stats_latency_max_us = 0;
   decoder->latency_count = 0;
+  decoder->last_sample_us = 0;
+  decoder->gap_max_stats_us = 0;
+  decoder->gap_max_log_us = 0;
   return chiaki_mutex_init(&decoder->codec_mutex, false);
 }
 
@@ -227,6 +231,11 @@ static bool is_codec_config(const uint8_t *buf, size_t buf_size, bool h265) {
   return any;
 }
 
+static void raise_gap_max(uint32_t *gap_max, uint32_t gap) {
+  if (gap > __atomic_load_n(gap_max, __ATOMIC_RELAXED))
+    __atomic_store_n(gap_max, gap, __ATOMIC_RELAXED);
+}
+
 bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size,
                                                int32_t frames_lost,
                                                bool frame_recovered,
@@ -235,6 +244,15 @@ bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size,
   (void)frame_recovered; // unused
   bool r = true;
   AndroidChiakiVideoDecoder *decoder = user;
+
+  uint64_t now = chiaki_time_now_monotonic_us();
+  if (decoder->last_sample_us) {
+    uint64_t gap = now - decoder->last_sample_us;
+    uint32_t gap_us = gap > UINT32_MAX ? UINT32_MAX : (uint32_t)gap;
+    raise_gap_max(&decoder->gap_max_stats_us, gap_us);
+    raise_gap_max(&decoder->gap_max_log_us, gap_us);
+  }
+  decoder->last_sample_us = now;
   chiaki_mutex_lock(&decoder->codec_mutex);
 
   if (!decoder->codec) {
@@ -315,9 +333,13 @@ static void track_latency(AndroidChiakiVideoDecoder *decoder,
     decoder->latency_max_us = latency;
   if (++decoder->latency_count < LATENCY_LOG_FRAMES)
     return;
-  CHIAKI_LOGI(decoder->log, "Decode latency: average %.1f ms, max %.1f ms",
+  uint32_t gap_us =
+      __atomic_exchange_n(&decoder->gap_max_log_us, 0, __ATOMIC_RELAXED);
+  CHIAKI_LOGI(decoder->log,
+              "Decode latency: average %.1f ms, max %.1f ms; frames arrived "
+              "up to %.1f ms apart",
               decoder->latency_sum_us / 1000.0 / decoder->latency_count,
-              decoder->latency_max_us / 1000.0);
+              decoder->latency_max_us / 1000.0, gap_us / 1000.0);
   decoder->latency_sum_us = 0;
   decoder->latency_max_us = 0;
   decoder->latency_count = 0;

@@ -56,6 +56,7 @@ class StreamSession(val connectInfo: ConnectInfo, val logManager: LogManager, va
 		private set
 
 	fun stats() = session?.getStats()
+	fun logInfo(text: String) = session?.logInfo(text)
 
 	private val _state = MutableLiveData<StreamState>(StreamStateIdle)
 	val state: LiveData<StreamState> get() = _state

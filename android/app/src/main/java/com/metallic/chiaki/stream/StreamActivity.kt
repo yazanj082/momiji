@@ -68,6 +68,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		const val EXTRA_CONNECT_INFO = "connect_info"
 		private const val HIDE_UI_TIMEOUT_MS = 2000L
 		private const val STATS_INTERVAL_MS = 1000L
+		private const val STREAM_CHECK_INTERVAL_MS = 10_000L
 		private const val BATTERY_CHECK_INTERVAL_MS = 60_000L
 		// Battery level in percent at which a controller's battery is reported as low, once,
 		// so that it never interrupts a game more than that
@@ -386,6 +387,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		if(Preferences(this).streamStatsEnabled)
 			setStatsVisible(true)
 		statsHandler.post(checkBatteryRunnable)
+		startStreamCheck()
 		getSystemService(DisplayManager::class.java)?.registerDisplayListener(displayListener, Handler(Looper.getMainLooper()))
 		updateSecondScreen()
 	}
@@ -435,6 +437,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		rumble?.stop()
 		statsHandler.removeCallbacks(updateStatsRunnable)
 		statsHandler.removeCallbacks(checkBatteryRunnable)
+		stopStreamCheck()
 		viewModel.session.pause()
 		countPlayTime()
 		getSystemService(DisplayManager::class.java)?.unregisterDisplayListener(displayListener)
@@ -560,6 +563,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 
 	private val statsHandler = Handler(Looper.getMainLooper())
 	private var statsLastFrames = -1L
+	private var statsLastShown = 0L
 	private var statsLastTimeMs = 0L
 
 	private val updateStatsRunnable = object: Runnable
@@ -601,17 +605,116 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 			(stats.framesRendered - statsLastFrames) * 1000f / (now - statsLastTimeMs)
 		else
 			0f
+		// Frames drawn with a new picture, when the video goes through the shaders
+		val shown = videoRenderer?.framesShown?.get()
+		val shownFps = if(shown != null && statsLastFrames >= 0 && now > statsLastTimeMs)
+			(shown - statsLastShown) * 1000f / (now - statsLastTimeMs)
+		else
+			null
 		statsLastFrames = stats.framesRendered
+		statsLastShown = shown ?: 0L
 		statsLastTimeMs = now
 		val profile = viewModel.session.connectInfo.videoProfile
 		// Technical figures, in the same digits in every language
 		fun format(id: Int, vararg args: Any) = String.format(Locale.ROOT, getString(id), *args)
 		binding.statsTextView.text = listOfNotNull(
-			format(R.string.stream_stats_video, profile.width, profile.height, fps),
+			if(shownFps != null)
+				format(R.string.stream_stats_video_shown, profile.width, profile.height, fps, shownFps)
+			else
+				format(R.string.stream_stats_video, profile.width, profile.height, fps),
 			upscalingStats(),
 			format(R.string.stream_stats_network, stats.bitrateMbps, stats.packetLoss * 100f, stats.pingMs),
-			format(R.string.stream_stats_decode, stats.decodeMsAverage, stats.decodeMsMax)
+			format(R.string.stream_stats_decode, stats.decodeMsAverage, stats.decodeMsMax),
+			format(R.string.stream_stats_timing, stats.frameGapMsMax, stats.audioBufferMs),
+			thermalStatus()?.let { format(R.string.stream_stats_thermal, thermalStatusText(it)) }
 		).joinToString("\n")
+	}
+
+	/** How hot the phone is, from PowerManager.THERMAL_STATUS_NONE up, on Android 10 and later */
+	private fun thermalStatus(): Int? =
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+			getSystemService(PowerManager::class.java)?.currentThermalStatus
+		else
+			null
+
+	private fun thermalStatusText(status: Int): String
+	{
+		val levels = resources.getStringArray(R.array.stream_stats_thermal_levels)
+		return levels[status.coerceIn(0, levels.size - 1)]
+	}
+
+	private fun thermalStatusName(status: Int) = when(status)
+	{
+		0 -> "none"
+		1 -> "light"
+		2 -> "moderate"
+		3 -> "severe"
+		4 -> "critical"
+		5 -> "emergency"
+		6 -> "shutdown"
+		else -> status.toString()
+	}
+
+	private var checkLastDelivered = -1L
+	private var checkLastShown = 0L
+
+	/**
+	 * Notes in the session's log how the phone keeps up during a long stream: its temperature, which
+	 * makes phones slow down, and frames the renderer couldn't draw in time. The decoder adds how
+	 * long decoding takes and how far apart the frames came from the network.
+	 */
+	private val streamCheckRunnable = object: Runnable
+	{
+		override fun run()
+		{
+			val parts = mutableListOf<String>()
+			thermalStatus()?.let { parts += "thermal status ${thermalStatusName(it)}" }
+			videoRenderer?.let {
+				val delivered = it.framesDelivered.get()
+				val shown = it.framesShown.get()
+				if(checkLastDelivered >= 0)
+					parts += "drew ${shown - checkLastShown} of ${delivered - checkLastDelivered} frames"
+				checkLastDelivered = delivered
+				checkLastShown = shown
+			}
+			if(parts.isNotEmpty())
+				viewModel.session.logInfo("Stream check: " + parts.joinToString(", "))
+			statsHandler.postDelayed(this, STREAM_CHECK_INTERVAL_MS)
+		}
+	}
+
+	private val thermalListener: Any? = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+		PowerManager.OnThermalStatusChangedListener { status ->
+			viewModel.session.logInfo("Phone thermal status is now ${thermalStatusName(status)}")
+		}
+	else
+		null
+
+	// PowerManager throws when a listener is added twice or removed when it isn't there
+	private var thermalListening = false
+
+	private fun startStreamCheck()
+	{
+		checkLastDelivered = -1L
+		statsHandler.removeCallbacks(streamCheckRunnable)
+		statsHandler.postDelayed(streamCheckRunnable, STREAM_CHECK_INTERVAL_MS)
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !thermalListening)
+		{
+			getSystemService(PowerManager::class.java)?.addThermalStatusListener(mainExecutor,
+				thermalListener as PowerManager.OnThermalStatusChangedListener)
+			thermalListening = true
+		}
+	}
+
+	private fun stopStreamCheck()
+	{
+		statsHandler.removeCallbacks(streamCheckRunnable)
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && thermalListening)
+		{
+			getSystemService(PowerManager::class.java)?.removeThermalStatusListener(
+				thermalListener as PowerManager.OnThermalStatusChangedListener)
+			thermalListening = false
+		}
 	}
 
 	/** What super resolution does with the picture, when it's on for this stream */

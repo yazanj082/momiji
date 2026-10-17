@@ -27,11 +27,23 @@
     <string name="action_upscaling_on">Turn on super resolution</string>
     <string name="action_upscaling_off">Turn off super resolution</string>
     <string name="stream_stats_video">%1$d×%2$d · %3$.0f fps</string>
+    <string name="stream_stats_video_shown">%1$d×%2$d · %3$.0f fps, %4$.0f shown</string>
     <string name="stream_stats_upscaled">Upscaled to %1$d×%2$d with super resolution</string>
     <string name="stream_stats_upscaling_not_needed">Super resolution not needed: the screen isn\'t bigger than the stream</string>
     <string name="stream_stats_upscaling_unsupported">Super resolution doesn\'t work on this device</string>
-    <string name="stream_stats_network">%1$.1f Mbit/s · %2$.1f%% lost · ping %3$.0f ms</string>
+    <string name="stream_stats_network">%1$.1f Mbit/s · %2$.1f%% lost · ping %3$.0f ms when connecting</string>
     <string name="stream_stats_decode">Decoding %1$.1f ms, at most %2$.1f ms</string>
+    <string name="stream_stats_timing">Frames up to %1$.0f ms apart · audio buffer %2$.0f ms</string>
+    <string name="stream_stats_thermal">Phone temperature: %1$s</string>
+    <string-array name="stream_stats_thermal_levels">
+        <item>normal</item>
+        <item>warm</item>
+        <item>hot, slowing down</item>
+        <item>very hot, slowing down</item>
+        <item>overheating</item>
+        <item>overheating</item>
+        <item>overheating</item>
+    </string-array>
     <string name="stream_menu_hint">Press L1 + R1 + Options + Create together to open the menu</string>
     <string name="action_login_pin_connect">Connect</string>
     <string name="action_settings">Settings</string>
