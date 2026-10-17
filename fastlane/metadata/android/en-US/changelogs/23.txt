@@ -1,0 +1,1 @@
+Fixes the sound slowly falling behind the picture during long sessions, for example on a TV over HDMI. The statistics now also show the frames actually shown on screen, the longest wait between frames from the network, the audio buffer and the phone's temperature, to find out what makes a long session laggy.
