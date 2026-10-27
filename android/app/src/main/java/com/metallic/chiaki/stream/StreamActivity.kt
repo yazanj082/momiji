@@ -73,6 +73,8 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		// Battery level in percent at which a controller's battery is reported as low, once,
 		// so that it never interrupts a game more than that
 		private const val BATTERY_WARNING_LEVEL = 10
+		// A short press, which opens the console's control center
+		private const val PS_BUTTON_PRESS_MS = 150L
 	}
 
 	private lateinit var viewModel: StreamViewModel
@@ -302,11 +304,18 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 	private var lastStreamTouchpadControllerState = com.metallic.chiaki.lib.ControllerState()
 
 	private fun updateCombinedTouchState() {
-		viewModel.input.touchControllerState = lastFragmentControllerState or lastStreamTouchpadControllerState or lastSecondScreenControllerState
+		viewModel.input.touchControllerState = lastFragmentControllerState or lastStreamTouchpadControllerState or lastSecondScreenControllerState or lastMenuControllerState
 	}
 
 	private var secondScreen: SecondScreenPresentation? = null
 	private var lastSecondScreenControllerState = com.metallic.chiaki.lib.ControllerState()
+	private var lastMenuControllerState = com.metallic.chiaki.lib.ControllerState()
+
+	/**
+	 * Between onStart and onStop. The lifecycle only becomes STARTED after onStart returns, so it
+	 * can't tell onStart that the stream can be seen.
+	 */
+	private var started = false
 
 	private val displayListener = object: DisplayManager.DisplayListener
 	{
@@ -325,7 +334,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 	 */
 	private fun updateSecondScreen()
 	{
-		val display = if(Preferences(this).secondScreen && lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) && !isInPictureInPictureMode)
+		val display = if(Preferences(this).secondScreen && started && !isInPictureInPictureMode)
 			SecondScreen.find(this, currentDisplayId())
 		else
 			null
@@ -389,6 +398,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		statsHandler.post(checkBatteryRunnable)
 		startStreamCheck()
 		getSystemService(DisplayManager::class.java)?.registerDisplayListener(displayListener, Handler(Looper.getMainLooper()))
+		started = true
 		updateSecondScreen()
 	}
 
@@ -441,8 +451,11 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		viewModel.session.pause()
 		countPlayTime()
 		getSystemService(DisplayManager::class.java)?.unregisterDisplayListener(displayListener)
+		started = false
 		secondScreen?.dismiss()
 		secondScreen = null
+		statsHandler.removeCallbacks(releasePsButtonRunnable)
+		releasePsButtonRunnable.run()
 		// Leaving the app ends the stream, as it always has. So does closing the small window.
 		if(!isChangingConfigurations)
 			finish()
@@ -902,6 +915,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		val upscalingEnabled = videoRenderer?.takeIf { it.upscalingAvailable }?.upscalingEnabled
 		val items = listOfNotNull<Pair<String, () -> Unit>>(
 			getString(R.string.action_stream_menu_resume) to {},
+			getString(R.string.button_ps) to { pressPsButton() },
 			getString(if(statsVisible) R.string.action_hide_stats else R.string.action_show_stats) to { setStatsVisible(!statsVisible) },
 			upscalingEnabled?.let { enabled ->
 				getString(if(enabled) R.string.action_upscaling_off else R.string.action_upscaling_on) to { setUpscalingEnabled(!enabled) }
@@ -917,6 +931,22 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 			.create()
 		dialogContents = StreamMenuDialog
 		dialog?.show()
+	}
+
+	/**
+	 * For controllers whose home button Android keeps for itself, like the AYN Thor's, when the
+	 * second screen with its PS button isn't there
+	 */
+	private fun pressPsButton()
+	{
+		lastMenuControllerState = com.metallic.chiaki.lib.ControllerState(buttons = com.metallic.chiaki.lib.ControllerState.BUTTON_PS)
+		updateCombinedTouchState()
+		statsHandler.postDelayed(releasePsButtonRunnable, PS_BUTTON_PRESS_MS)
+	}
+
+	private val releasePsButtonRunnable = Runnable {
+		lastMenuControllerState = com.metallic.chiaki.lib.ControllerState()
+		updateCombinedTouchState()
 	}
 
 	private var streamMenuHintShown = false
