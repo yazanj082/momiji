@@ -1,0 +1,1 @@
+On dual-screen handhelds like the AYN Thor, the touchpad and buttons now appear on the second screen as soon as the stream starts, not only after coming back from the small window. The stream menu (press L1 + R1 + Options + Create together) has a PS button, for controllers whose home button belongs to the system, like the Thor's.
