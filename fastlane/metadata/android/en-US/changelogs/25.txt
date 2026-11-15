@@ -1,0 +1,1 @@
+The DualSense touchpad works again on Android 17: touches, swipes and presses reach the console. Also fixes a touch that could stay held on the console after the stream lost the touchpad for a moment.
