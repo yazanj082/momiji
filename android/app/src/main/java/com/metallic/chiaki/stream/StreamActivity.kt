@@ -849,6 +849,15 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 			hideSystemUI()
 			updatePointerCapture()
 		}
+		else if(::viewModel.isInitialized)
+			viewModel.input.stopTouchpadTouches()
+	}
+
+	override fun onPointerCaptureChanged(hasCapture: Boolean)
+	{
+		super.onPointerCaptureChanged(hasCapture)
+		if(!hasCapture && ::viewModel.isInitialized)
+			viewModel.input.stopTouchpadTouches()
 	}
 
 	/**

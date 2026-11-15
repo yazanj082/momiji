@@ -295,8 +295,14 @@ class StreamInput(val context: Context, val preferences: Preferences)
 		motionControllerState.leftY = 0
 		motionControllerState.rightX = 0
 		motionControllerState.rightY = 0
-		touchpadTouches.values.forEach { touchpadControllerState.stopTouch(it) }
+		stopTouchpadTouches()
+	}
+
+	// Releases the controller's touchpad, including touches whose pointer ids were lost
+	fun stopTouchpadTouches()
+	{
 		touchpadTouches.clear()
+		touchpadControllerState.touches.forEach { touchpadControllerState.stopTouch(it.id.toUByte()) }
 		touchpadControllerState.buttons = 0U
 		controllerStateUpdated()
 	}
@@ -416,8 +422,12 @@ class StreamInput(val context: Context, val preferences: Preferences)
 		when(event.actionMasked)
 		{
 			MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
+				if(event.actionMasked == MotionEvent.ACTION_DOWN)
+					stopTouchpadTouches()
 				val index = event.actionIndex
-				state.startTouch(x(index), y(index))?.let { touchpadTouches[event.getPointerId(index)] = it }
+				val pointerId = event.getPointerId(index)
+				touchpadTouches.remove(pointerId)?.let { state.stopTouch(it) }
+				state.startTouch(x(index), y(index))?.let { touchpadTouches[pointerId] = it }
 			}
 			MotionEvent.ACTION_MOVE ->
 				for(index in 0 until event.pointerCount)
