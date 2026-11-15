@@ -437,11 +437,6 @@ class StreamInput(val context: Context, val preferences: Preferences)
 	}
 
 	/**
-	 * Without an input config for it, Android makes the touchpad of a DualSense/DualShock 4 a
-	 * mouse pointer. Its clicks are then the touchpad button, and its pointer is ignored.
-	 * @return whether the event came from such a touchpad
-	 */
-	/**
 	 * A DualSense/DualShock 4 whose touchpad Android made a mouse pointer.
 	 */
 	fun isPointerTouchpadConnected() = InputDevice.getDeviceIds().any { id ->
@@ -455,23 +450,36 @@ class StreamInput(val context: Context, val preferences: Preferences)
 	 */
 	fun onCapturedPointerEvent(event: MotionEvent): Boolean
 	{
+		val touchpad = event.isFromSource(InputDevice.SOURCE_TOUCHPAD)
 		if(!capturedEventLogged)
 		{
 			capturedEventLogged = true
-			android.util.Log.i("StreamInput", "Captured pointer: source=0x${Integer.toHexString(event.source)} device=${event.device?.name}")
+			android.util.Log.i("StreamInput", "Captured pointer: source=0x${Integer.toHexString(event.source)} touchpad=$touchpad device=${event.device?.name}")
 		}
-		return if(event.isFromSource(InputDevice.SOURCE_TOUCHPAD) && event.device?.vendorId == VENDOR_ID_SONY)
+		if(event.device?.vendorId != VENDOR_ID_SONY)
+			return true // a real mouse, which does nothing in the stream
+		return if(touchpad)
 			onTouchpadEvent(event)
 		else
-			true // a real mouse, which does nothing in the stream
+			onTouchpadClickEvent(event)
 	}
 
 	private var capturedEventLogged = false
 
+	/**
+	 * Without an input config for it, Android makes the touchpad of a DualSense/DualShock 4 a
+	 * mouse pointer. Its clicks are then the touchpad button, and its pointer is ignored.
+	 * @return whether the event came from such a touchpad
+	 */
 	fun onControllerPointerEvent(event: MotionEvent): Boolean
 	{
 		if(!event.isFromSource(InputDevice.SOURCE_MOUSE) || event.device?.vendorId != VENDOR_ID_SONY)
 			return false
+		return onTouchpadClickEvent(event)
+	}
+
+	private fun onTouchpadClickEvent(event: MotionEvent): Boolean
+	{
 		val clicked = event.buttonState and MotionEvent.BUTTON_PRIMARY != 0
 			&& event.actionMasked != MotionEvent.ACTION_UP && event.actionMasked != MotionEvent.ACTION_CANCEL
 		val buttons = if(clicked) ControllerState.BUTTON_TOUCHPAD else 0U

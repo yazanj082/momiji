@@ -867,7 +867,24 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 			root.isFocusableInTouchMode = true
 			root.requestFocus()
 			if(!root.hasPointerCapture())
-				root.requestPointerCapture()
+			{
+				if(Build.VERSION.SDK_INT >= 37)
+				{
+					try
+					{
+						// Android 17 defaults to relative motion unless absolute positions are requested
+						val mode = View::class.java.getField("POINTER_CAPTURE_MODE_ABSOLUTE").getInt(null)
+						View::class.java.getMethod("requestPointerCapture", Int::class.javaPrimitiveType).invoke(root, mode)
+					}
+					catch(e: Exception)
+					{
+						Log.w(TAG, "Requesting absolute pointer capture failed", e)
+						root.requestPointerCapture()
+					}
+				}
+				else
+					root.requestPointerCapture()
+			}
 		}
 		else if(root.hasPointerCapture())
 			root.releasePointerCapture()
