@@ -319,7 +319,11 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 
 	private val displayListener = object: DisplayManager.DisplayListener
 	{
-		override fun onDisplayAdded(displayId: Int) = updateSecondScreen()
+		override fun onDisplayAdded(displayId: Int)
+		{
+			Log.i(TAG, "Display added: ${SecondScreen.describeAll(this@StreamActivity)}")
+			updateSecondScreen()
+		}
 		override fun onDisplayRemoved(displayId: Int) = updateSecondScreen()
 		override fun onDisplayChanged(displayId: Int) = updateSecondScreen()
 	}

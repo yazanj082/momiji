@@ -5,7 +5,9 @@ package com.metallic.chiaki.stream
 import android.annotation.SuppressLint
 import android.app.Presentation
 import android.content.Context
+import android.hardware.display.DeviceProductInfo
 import android.hardware.display.DisplayManager
+import android.os.Build
 import android.os.Bundle
 import android.view.Display
 import android.view.KeyEvent
@@ -38,17 +40,45 @@ object SecondScreen
 		null
 	}
 
+	/** How the display is attached, from Android 12: built in, or a TV/monitor on a cable. Null if unknown. */
+	private fun connection(display: Display): Int? =
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+			display.deviceProductInfo?.connectionToSinkType?.takeIf { it != DeviceProductInfo.CONNECTION_TO_SINK_UNKNOWN }
+		else
+			null
+
 	/**
-	 * A display for presentations that is on, other than the one the stream is on. Wireless and
-	 * virtual displays are left out: those mirror the phone, for example to a TV.
+	 * A TV or monitor plugged in with a cable (USB-C, HDMI). It mirrors the main screen, so it keeps
+	 * showing the game instead of the touchpad.
+	 */
+	private fun isMonitor(display: Display): Boolean
+	{
+		val connection = connection(display)
+		if(connection == DeviceProductInfo.CONNECTION_TO_SINK_DIRECT || connection == DeviceProductInfo.CONNECTION_TO_SINK_TRANSITIVE)
+			return true
+		if(connection == DeviceProductInfo.CONNECTION_TO_SINK_BUILT_IN)
+			return false
+		val name = display.name.lowercase()
+		return "hdmi" in name || "displayport" in name || name.startsWith("dp")
+	}
+
+	/**
+	 * The built-in second screen, if it's on: a display for presentations other than the one the
+	 * stream is on. Wireless and virtual displays mirror the phone and TVs or monitors on a cable
+	 * should keep showing the game, so those are left out. A screen that says it's built in comes first.
 	 */
 	fun find(context: Context, currentDisplayId: Int): Display? =
 		context.getSystemService(DisplayManager::class.java)
 			?.getDisplays(DisplayManager.DISPLAY_CATEGORY_PRESENTATION)
-			?.firstOrNull { it.displayId != currentDisplayId && it.state == Display.STATE_ON && type(it) != TYPE_WIFI && type(it) != TYPE_VIRTUAL }
+			?.filter { it.displayId != currentDisplayId && it.state == Display.STATE_ON && type(it) != TYPE_WIFI && type(it) != TYPE_VIRTUAL && !isMonitor(it) }
+			?.minByOrNull { if(connection(it) == DeviceProductInfo.CONNECTION_TO_SINK_BUILT_IN) 0 else 1 }
 
 	/** For the log, in case a device's second screen behaves differently */
-	fun describe(display: Display) = "display ${display.displayId} \"${display.name}\", type ${type(display)}, flags ${display.flags}"
+	fun describe(display: Display) = "display ${display.displayId} \"${display.name}\", type ${type(display)}, connection ${connection(display)}, flags ${display.flags}"
+
+	/** Every display Android lists, for the log when displays come and go */
+	fun describeAll(context: Context) = context.getSystemService(DisplayManager::class.java)?.displays
+		?.joinToString("; ") { describe(it) + if(isMonitor(it)) " (TV/monitor)" else "" }
 }
 
 /**
