@@ -1,0 +1,1 @@
+Dual-screen handhelds: with a TV or monitor plugged in over USB-C, the touchpad now stays on the built-in second screen and the TV keeps showing the game. Phones with a USB-C to HDMI cable no longer show the touchpad on the TV either.
