@@ -21,6 +21,8 @@ typedef struct android_chiaki_audio_decoder_t
 	struct AMediaCodec *codec;
 	uint64_t timestamp_cur;
 	ChiakiThread output_thread;
+	// Set while the codec shuts down: the output thread stops even if the end-of-stream buffer can't be sent
+	volatile bool shutting_down;
 
 	AndroidChiakiAudioDecoderSettingsCallback settings_cb;
 	AndroidChiakiAudioDecoderFrameCallback frame_cb;

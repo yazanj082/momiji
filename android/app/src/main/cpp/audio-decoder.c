@@ -10,6 +10,9 @@
 #include <string.h>
 
 #define INPUT_BUFFER_TIMEOUT_MS 10
+// Waits are bounded so that stopping a stream (on the main thread) can never hang the app
+#define SHUTDOWN_INPUT_TIMEOUT_MS 300
+#define OUTPUT_BUFFER_TIMEOUT_MS 100
 
 static void *android_chiaki_audio_decoder_output_thread_func(void *user);
 static void android_chiaki_audio_decoder_header(ChiakiAudioHeader *header, void *user);
@@ -21,6 +24,7 @@ ChiakiErrorCode android_chiaki_audio_decoder_init(AndroidChiakiAudioDecoder *dec
 	memset(&decoder->audio_header, 0, sizeof(decoder->audio_header));
 	decoder->codec = NULL;
 	decoder->timestamp_cur = 0;
+	decoder->shutting_down = false;
 
 	decoder->cb_user = NULL;
 	decoder->settings_cb = NULL;
@@ -32,18 +36,22 @@ ChiakiErrorCode android_chiaki_audio_decoder_init(AndroidChiakiAudioDecoder *dec
 void android_chiaki_audio_decoder_shutdown_codec(AndroidChiakiAudioDecoder *decoder)
 {
 	chiaki_mutex_lock(&decoder->codec_mutex);
-	ssize_t codec_buf_index = AMediaCodec_dequeueInputBuffer(decoder->codec, -1);
+	decoder->shutting_down = true;
+	ssize_t codec_buf_index = AMediaCodec_dequeueInputBuffer(decoder->codec, SHUTDOWN_INPUT_TIMEOUT_MS * 1000);
 	if(codec_buf_index >= 0)
 	{
 		CHIAKI_LOGI(decoder->log, "Audio Decoder sending EOS buffer");
 		AMediaCodec_queueInputBuffer(decoder->codec, (size_t)codec_buf_index, 0, 0, decoder->timestamp_cur++, AMEDIACODEC_BUFFER_FLAG_END_OF_STREAM);
 	}
 	else
-		CHIAKI_LOGE(decoder->log, "Failed to get input buffer for shutting down Audio Decoder!");
+		CHIAKI_LOGW(decoder->log, "No input buffer for the Audio Decoder's EOS, stopping it without");
 	chiaki_mutex_unlock(&decoder->codec_mutex);
+	// The output thread ends at the EOS, or within OUTPUT_BUFFER_TIMEOUT_MS because of shutting_down
 	chiaki_thread_join(&decoder->output_thread, NULL);
+	AMediaCodec_stop(decoder->codec);
 	AMediaCodec_delete(decoder->codec);
 	decoder->codec = NULL;
+	decoder->shutting_down = false;
 }
 
 void android_chiaki_audio_decoder_fini(AndroidChiakiAudioDecoder *decoder)
@@ -71,7 +79,21 @@ static void *android_chiaki_audio_decoder_output_thread_func(void *user)
 	while(1)
 	{
 		AMediaCodecBufferInfo info;
-		ssize_t codec_buf_index = AMediaCodec_dequeueOutputBuffer(decoder->codec, &info, -1);
+		ssize_t codec_buf_index = AMediaCodec_dequeueOutputBuffer(decoder->codec, &info, OUTPUT_BUFFER_TIMEOUT_MS * 1000);
+		if(codec_buf_index < 0)
+		{
+			if(decoder->shutting_down)
+				break;
+			// Try again later, or the output format/buffers changed: keep going. Anything else is an error.
+			if(codec_buf_index != AMEDIACODEC_INFO_TRY_AGAIN_LATER
+				&& codec_buf_index != AMEDIACODEC_INFO_OUTPUT_FORMAT_CHANGED
+				&& codec_buf_index != AMEDIACODEC_INFO_OUTPUT_BUFFERS_CHANGED)
+			{
+				CHIAKI_LOGE(decoder->log, "Audio Decoder output failed with %d", (int)codec_buf_index);
+				break;
+			}
+			continue;
+		}
 		if(codec_buf_index >= 0)
 		{
 			if(decoder->settings_cb)
@@ -186,8 +208,10 @@ static void android_chiaki_audio_decoder_frame(uint8_t *buf, size_t buf_size, vo
 		ssize_t codec_buf_index = AMediaCodec_dequeueInputBuffer(decoder->codec, INPUT_BUFFER_TIMEOUT_MS * 1000);
 		if(codec_buf_index < 0)
 		{
+			// Drops the rest of this frame. This used to return with the mutex still locked, which
+			// hung the app when the stream was stopped (ANRs in chiaki_mutex_lock, 1.1.3).
 			CHIAKI_LOGE(decoder->log, "Failed to get input audio buffer");
-			return;
+			goto beach;
 		}
 
 		size_t codec_buf_size;
