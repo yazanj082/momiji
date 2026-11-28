@@ -1,0 +1,1 @@
+Fixes the app freezing ("not responding") for some players when they left a stream. Also includes the 1.1.4 fix: on dual-screen handhelds with a TV plugged in over USB-C, the touchpad stays on the built-in second screen and the TV keeps showing the game.
